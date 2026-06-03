@@ -47,9 +47,9 @@ async def setup_data(session: AsyncSession):
 
 
 class TestCreateAssessment:
-    async def test_create_assessment(self, client: AsyncClient, setup_data):
+    async def test_create_assessment(self, auth_client: AsyncClient, setup_data):
         alocacao = setup_data["alocacao"]
-        response = await client.post("/assessments", json={
+        response = await auth_client.post("/assessments", json={
             "alocacao_id": str(alocacao.id),
             "titulo": "Prova Bimestral",
             "tipo": "prova",
@@ -64,7 +64,7 @@ class TestCreateAssessment:
         assert data["bimestre"] == 1
         assert Decimal(data["nota_maxima"]) == Decimal("10")
 
-    async def test_duplicate_assessment(self, client: AsyncClient, setup_data):
+    async def test_duplicate_assessment(self, auth_client: AsyncClient, setup_data):
         alocacao = setup_data["alocacao"]
         body = {
             "alocacao_id": str(alocacao.id),
@@ -75,17 +75,17 @@ class TestCreateAssessment:
             "bimestre": 1,
             "data_aplicacao": "2026-03-15",
         }
-        await client.post("/assessments", json=body)
-        response = await client.post("/assessments", json=body)
+        await auth_client.post("/assessments", json=body)
+        response = await auth_client.post("/assessments", json=body)
         assert response.status_code == 409
 
 
 class TestCreateGrade:
-    async def test_create_grade(self, client: AsyncClient, setup_data, session: AsyncSession):
+    async def test_create_grade(self, auth_client: AsyncClient, setup_data, session: AsyncSession):
         alocacao = setup_data["alocacao"]
         matricula = setup_data["matricula"]
 
-        av_resp = await client.post("/assessments", json={
+        av_resp = await auth_client.post("/assessments", json={
             "alocacao_id": str(alocacao.id),
             "titulo": "Prova",
             "tipo": "prova",
@@ -96,7 +96,7 @@ class TestCreateGrade:
         })
         avaliacao_id = av_resp.json()["id"]
 
-        response = await client.post("/assessments/grades", json={
+        response = await auth_client.post("/assessments/grades", json={
             "avaliacao_id": avaliacao_id,
             "notas": [
                 {"matricula_id": str(matricula.id), "valor": 8.5},
@@ -107,11 +107,11 @@ class TestCreateGrade:
         assert len(data) == 1
         assert Decimal(data[0]["valor"]) == Decimal("8.5")
 
-    async def test_grade_above_max(self, client: AsyncClient, setup_data):
+    async def test_grade_above_max(self, auth_client: AsyncClient, setup_data):
         alocacao = setup_data["alocacao"]
         matricula = setup_data["matricula"]
 
-        av_resp = await client.post("/assessments", json={
+        av_resp = await auth_client.post("/assessments", json={
             "alocacao_id": str(alocacao.id),
             "titulo": "Prova",
             "tipo": "prova",
@@ -122,7 +122,7 @@ class TestCreateGrade:
         })
         avaliacao_id = av_resp.json()["id"]
 
-        response = await client.post("/assessments/grades", json={
+        response = await auth_client.post("/assessments/grades", json={
             "avaliacao_id": avaliacao_id,
             "notas": [
                 {"matricula_id": str(matricula.id), "valor": 11.0},

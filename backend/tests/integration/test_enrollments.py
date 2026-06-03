@@ -27,11 +27,11 @@ async def setup_data(session: AsyncSession):
 
 
 class TestCreateEnrollment:
-    async def test_create_enrollment(self, client: AsyncClient, setup_data):
+    async def test_create_enrollment(self, admin_client: AsyncClient, setup_data):
         turma = setup_data["turma"]
         aluno = setup_data["aluno"]
 
-        response = await client.post("/enrollments", json={
+        response = await admin_client.post("/enrollments", json={
             "aluno_id": str(aluno.id),
             "turma_id": str(turma.id),
         })
@@ -41,26 +41,26 @@ class TestCreateEnrollment:
         assert data["turma_id"] == str(turma.id)
         assert data["status"] == "ativa"
 
-    async def test_duplicate_enrollment(self, client: AsyncClient, setup_data, session: AsyncSession):
+    async def test_duplicate_enrollment(self, admin_client: AsyncClient, setup_data, session: AsyncSession):
         turma = setup_data["turma"]
         aluno = setup_data["aluno"]
 
-        await client.post("/enrollments", json={
+        await admin_client.post("/enrollments", json={
             "aluno_id": str(aluno.id),
             "turma_id": str(turma.id),
         })
 
-        response = await client.post("/enrollments", json={
+        response = await admin_client.post("/enrollments", json={
             "aluno_id": str(aluno.id),
             "turma_id": str(turma.id),
         })
         assert response.status_code == 409
 
-    async def test_turma_sem_vagas(self, client: AsyncClient, setup_data, session: AsyncSession):
+    async def test_turma_sem_vagas(self, admin_client: AsyncClient, setup_data, session: AsyncSession):
         turma = setup_data["turma"]
         aluno = setup_data["aluno"]
 
-        await client.post("/enrollments", json={
+        await admin_client.post("/enrollments", json={
             "aluno_id": str(aluno.id),
             "turma_id": str(turma.id),
         })
@@ -69,7 +69,7 @@ class TestCreateEnrollment:
         resp2 = await create_usuario(session, perfil=Perfil.RESPONSAVEL)
         await create_responsavel_aluno(session, aluno2.id, resp2.id, Parentesco.PAI)
 
-        response = await client.post("/enrollments", json={
+        response = await admin_client.post("/enrollments", json={
             "aluno_id": str(aluno2.id),
             "turma_id": str(turma.id),
         })
@@ -79,7 +79,7 @@ class TestCreateEnrollment:
         resp3 = await create_usuario(session, perfil=Perfil.RESPONSAVEL)
         await create_responsavel_aluno(session, aluno3.id, resp3.id, Parentesco.MAE)
 
-        response = await client.post("/enrollments", json={
+        response = await admin_client.post("/enrollments", json={
             "aluno_id": str(aluno3.id),
             "turma_id": str(turma.id),
         })

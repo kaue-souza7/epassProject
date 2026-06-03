@@ -44,9 +44,9 @@ async def setup_data(session: AsyncSession):
 
 
 class TestCalls:
-    async def test_create_call(self, client: AsyncClient, setup_data):
+    async def test_create_call(self, auth_client: AsyncClient, setup_data):
         alocacao = setup_data["alocacao"]
-        response = await client.post("/attendance/calls", json={
+        response = await auth_client.post("/attendance/calls", json={
             "alocacao_id": str(alocacao.id),
             "data_hora_aula": "2026-03-10T08:00:00",
         })
@@ -54,19 +54,19 @@ class TestCalls:
         data = response.json()
         assert data["alocacao_id"] == str(alocacao.id)
 
-    async def test_duplicate_call(self, client: AsyncClient, setup_data):
+    async def test_duplicate_call(self, auth_client: AsyncClient, setup_data):
         alocacao = setup_data["alocacao"]
         body = {
             "alocacao_id": str(alocacao.id),
             "data_hora_aula": "2026-03-10T08:00:00",
         }
-        await client.post("/attendance/calls", json=body)
-        response = await client.post("/attendance/calls", json=body)
+        await auth_client.post("/attendance/calls", json=body)
+        response = await auth_client.post("/attendance/calls", json=body)
         assert response.status_code == 409
 
-    async def test_create_call_auto_creates_frequencies(self, client: AsyncClient, setup_data):
+    async def test_create_call_auto_creates_frequencies(self, auth_client: AsyncClient, setup_data):
         alocacao = setup_data["alocacao"]
-        response = await client.post("/attendance/calls", json={
+        response = await auth_client.post("/attendance/calls", json={
             "alocacao_id": str(alocacao.id),
             "data_hora_aula": "2026-03-11T08:00:00",
         })
@@ -74,17 +74,17 @@ class TestCalls:
 
 
 class TestFrequencies:
-    async def test_register_frequencies(self, client: AsyncClient, setup_data):
+    async def test_register_frequencies(self, auth_client: AsyncClient, setup_data):
         alocacao = setup_data["alocacao"]
         matricula = setup_data["matricula"]
 
-        call_resp = await client.post("/attendance/calls", json={
+        call_resp = await auth_client.post("/attendance/calls", json={
             "alocacao_id": str(alocacao.id),
             "data_hora_aula": "2026-03-12T08:00:00",
         })
         chamada_id = call_resp.json()["id"]
 
-        response = await client.post("/attendance/frequencies", json={
+        response = await auth_client.post("/attendance/frequencies", json={
             "chamada_id": chamada_id,
             "frequencias": [
                 {"matricula_id": str(matricula.id), "status": "presente"},
@@ -92,9 +92,9 @@ class TestFrequencies:
         })
         assert response.status_code == 204
 
-    async def test_register_frequencies_invalid_chamada(self, client: AsyncClient, setup_data):
+    async def test_register_frequencies_invalid_chamada(self, auth_client: AsyncClient, setup_data):
         matricula = setup_data["matricula"]
-        response = await client.post("/attendance/frequencies", json={
+        response = await auth_client.post("/attendance/frequencies", json={
             "chamada_id": "00000000-0000-0000-0000-000000000000",
             "frequencias": [
                 {"matricula_id": str(matricula.id), "status": "presente"},

@@ -1,9 +1,11 @@
 from decimal import Decimal
+from datetime import datetime, timezone
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.academic_config.service import ConfiguracaoAcademicaService
 from app.shared.enums import Parentesco, Perfil, StatusFrequencia
 from tests.factories import (
     create_alocacao,
@@ -22,12 +24,12 @@ from tests.factories import (
     create_usuario,
 )
 
-from datetime import datetime, timezone
-
 
 @pytest.fixture
 async def setup_data(session: AsyncSession):
     ano = await create_ano_letivo(session)
+    config_service = ConfiguracaoAcademicaService(session)
+    await config_service.obter(ano.id)
     serie = await create_serie(session)
     turma = await create_turma(
         session, codigo="1A", serie_id=serie.id, ano_letivo_id=ano.id, vagas_total=30,
@@ -70,9 +72,9 @@ async def setup_data(session: AsyncSession):
 
 
 class TestBimestralReport:
-    async def test_bimestral_report(self, client: AsyncClient, setup_data):
+    async def test_bimestral_report(self, auth_client: AsyncClient, setup_data):
         matricula = setup_data["matricula"]
-        response = await client.get(
+        response = await auth_client.get(
             f"/reports/report-card/{matricula.id}",
             params={"bimestre": 1},
         )
@@ -83,8 +85,8 @@ class TestBimestralReport:
         assert data["aluno_nome"] == "João"
         assert len(data["disciplinas"]) > 0
 
-    async def test_bimestral_report_not_found(self, client: AsyncClient):
-        response = await client.get(
+    async def test_bimestral_report_not_found(self, auth_client: AsyncClient):
+        response = await auth_client.get(
             "/reports/report-card/00000000-0000-0000-0000-000000000000",
             params={"bimestre": 1},
         )
@@ -92,9 +94,9 @@ class TestBimestralReport:
 
 
 class TestAnnualReport:
-    async def test_annual_report(self, client: AsyncClient, setup_data):
+    async def test_annual_report(self, auth_client: AsyncClient, setup_data):
         matricula = setup_data["matricula"]
-        response = await client.get(
+        response = await auth_client.get(
             f"/reports/report-card/{matricula.id}/annual",
         )
         assert response.status_code == 200
@@ -103,17 +105,17 @@ class TestAnnualReport:
         assert len(data["bimestres"]) == 4
         assert "situacao_final" in data
 
-    async def test_annual_report_not_found(self, client: AsyncClient):
-        response = await client.get(
+    async def test_annual_report_not_found(self, auth_client: AsyncClient):
+        response = await auth_client.get(
             "/reports/report-card/00000000-0000-0000-0000-000000000000/annual",
         )
         assert response.status_code == 404
 
 
 class TestWeightedAverage:
-    async def test_weighted_average(self, client: AsyncClient, setup_data):
+    async def test_weighted_average(self, auth_client: AsyncClient, setup_data):
         matricula = setup_data["matricula"]
-        response = await client.get(
+        response = await auth_client.get(
             f"/reports/report-card/{matricula.id}",
             params={"bimestre": 1},
         )
@@ -125,9 +127,9 @@ class TestWeightedAverage:
 
 
 class TestFrequency:
-    async def test_frequency_in_report(self, client: AsyncClient, setup_data):
+    async def test_frequency_in_report(self, auth_client: AsyncClient, setup_data):
         matricula = setup_data["matricula"]
-        response = await client.get(
+        response = await auth_client.get(
             f"/reports/report-card/{matricula.id}",
             params={"bimestre": 1},
         )

@@ -39,9 +39,9 @@ class ConfiguracaoAcademica(Base):
     quantidade_periodos: Mapped[int] = mapped_column(Integer, nullable=False)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc), nullable=False,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc), nullable=False,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False,
     )

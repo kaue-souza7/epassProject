@@ -49,6 +49,34 @@ async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
     app.dependency_overrides[get_session] = override_get_session
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with AsyncClient(transport=transport, base_url="http://test/api/v1") as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def auth_client(client: AsyncClient, session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    import uuid as _uuid
+    from app.shared.enums import Perfil
+    from tests.factories import create_usuario, PASSWORD
+    email = f"auth.{_uuid.uuid4().hex[:8]}@test.com"
+    await create_usuario(session, email=email, perfil=Perfil.PROFESSOR)
+    await session.commit()
+    login_resp = await client.post("/auth/login", json={"email": email, "password": PASSWORD})
+    token = login_resp.json()["access_token"]
+    client.headers = {"Authorization": f"Bearer {token}"}
+    yield client
+
+
+@pytest_asyncio.fixture
+async def admin_client(client: AsyncClient, session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    import uuid as _uuid
+    from app.shared.enums import Perfil
+    from tests.factories import create_usuario, PASSWORD
+    email = f"admin.{_uuid.uuid4().hex[:8]}@test.com"
+    await create_usuario(session, email=email, perfil=Perfil.ADMIN)
+    await session.commit()
+    login_resp = await client.post("/auth/login", json={"email": email, "password": PASSWORD})
+    token = login_resp.json()["access_token"]
+    client.headers = {"Authorization": f"Bearer {token}"}
+    yield client
