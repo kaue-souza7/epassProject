@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-gray-200 dark:border-gray-700;
+  }
+  body {
+    @apply bg-surface dark:bg-surface-dark text-gray-900 dark:text-gray-100 antialiased;
+  }
+}
+
+@media print {
+  header,
+  aside {
+    display: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  body,
+  #root,
+  .h-screen,
+  .overflow-hidden,
+  .flex {
+    overflow: visible !important;
+    height: auto !important;
+    position: static !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+  }
+
+  .bg-card,
+  .bg-surface,
+  .dark\:bg-card-dark,
+  .dark\:bg-surface-dark,
+  .bg-gray-50,
+  .dark\:bg-gray-800,
+  .bg-gray-100,
+  .dark\:bg-gray-700 {
+    background: white !important;
+    box-shadow: none !important;
+  }
+
+  .text-gray-500,
+  .text-gray-600,
+  .text-gray-400,
+  .text-gray-700,
+  .dark\:text-gray-400,
+  .dark\:text-gray-300,
+  .dark\:text-gray-100 {
+    color: black !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  th {
+    background: #f3f4f6 !important;
+    color: black !important;
+    font-weight: 600 !important;
+    border: 1px solid #d1d5db !important;
+  }
+
+  td {
+    border: 1px solid #d1d5db !important;
+    padding: 6px 8px !important;
+  }
+
+  .rounded-lg,
+  .rounded-xl,
+  .rounded-2xl {
+    border-radius: 0 !important;
+  }
+
+  .shadow-sm,
+  .shadow,
+  .shadow-md {
+    box-shadow: none !important;
+  }
+
+  .text-danger-500,
+  .text-danger-600 {
+    color: #dc2626 !important;
+  }
+
+  .text-primary-500,
+  .text-primary-600,
+  .dark\:text-primary-400 {
+    color: #2563eb !important;
+  }
+
+  .bg-primary-50,
+  .dark\:bg-primary-900\/20 {
+    background: #eff6ff !important;
+  }
+}
