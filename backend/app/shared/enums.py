@@ -148,3 +148,21 @@ class TipoDestinoEvento(StrEnum):
     PROFESSOR = "professor"
     RESPONSAVEL = "responsavel"
     TURMA = "turma"
+
+
+class StatusPulseira(StrEnum):
+    ATIVA = "ativa"
+    BLOQUEADA = "bloqueada"
+    CANCELADA = "cancelada"
+
+
+class StatusCarteira(StrEnum):
+    ATIVA = "ativa"
+    BLOQUEADA = "bloqueada"
+    CANCELADA = "cancelada"
+
+
+class TipoMovimentacao(StrEnum):
+    RECARGA = "recarga"
+    CONSUMO = "consumo"
+    ESTORNO = "estorno"

@@ -23,6 +23,8 @@ from app.modules.attendance.models import Chamada, Frequencia  # noqa: F401
 from app.modules.assessment.models import Avaliacao, Nota  # noqa: F401
 from app.modules.academic_config.models import ConfiguracaoAcademica  # noqa: F401
 from app.modules.agenda.models import Evento, EventoDestinatario  # noqa: F401
+from app.modules.financial.models import Wallet, Movimentacao  # noqa: F401
+from app.modules.bracelets.models import Bracelet  # noqa: F401
 
 
 config = context.config

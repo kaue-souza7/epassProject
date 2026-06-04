@@ -1,19 +1,19 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { TabNavigator } from "./TabNavigator";
 import { LoginScreen } from "../screens/LoginScreen";
+import { useAuth } from "../contexts/AuthContext";
+import { ProfileRouter } from "./ProfileRouter";
 
 const Stack = createNativeStackNavigator();
 
-export function RootNavigator() {
+function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="SelectStudent" component={PlaceholderScreen} />
-      <Stack.Screen name="Tabs" component={TabNavigator} />
     </Stack.Navigator>
   );
 }
 
-function PlaceholderScreen() {
-  return null;
+export function RootNavigator() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <ProfileRouter /> : <AuthStack />;
 }

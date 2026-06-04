@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#FF5B8F"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.epass.mobile"
@@ -28,7 +30,9 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-local-authentication"
+      "expo-local-authentication",
+      "expo-asset",
+      "expo-font"
     ]
   }
 }

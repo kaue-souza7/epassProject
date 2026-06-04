@@ -23,6 +23,8 @@ from app.modules.reports.router import router as reports_router
 from app.modules.academic_config.router import router as academic_config_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.agenda.router import router as agenda_router
+from app.modules.financial.router import router as financial_router
+from app.modules.bracelets.router import router as bracelets_router
 
 API_PREFIX = "/api/v1"
 
@@ -76,6 +78,8 @@ def create_app() -> FastAPI:
     app.include_router(academic_config_router, prefix=API_PREFIX)
     app.include_router(dashboard_router, prefix=API_PREFIX)
     app.include_router(agenda_router, prefix=API_PREFIX)
+    app.include_router(financial_router, prefix=API_PREFIX)
+    app.include_router(bracelets_router, prefix=API_PREFIX)
 
     # Health Check
     health_router = APIRouter()

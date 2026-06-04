@@ -1,6 +1,7 @@
 import asyncio
 import uuid
 from datetime import date, datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy import select
 
@@ -18,7 +19,9 @@ from app.modules.allocations.models import Alocacao
 from app.modules.academic_config.models import ConfiguracaoAcademica
 from app.modules.users.models import Usuario
 from app.modules.auth.models import Sessao  # needed for relationship resolution
-from app.shared.enums import Perfil, Turno, StatusMatricula, Parentesco
+from app.modules.financial.models import Wallet
+from app.modules.bracelets.models import Bracelet
+from app.shared.enums import Perfil, Turno, StatusMatricula, Parentesco, StatusCarteira, StatusPulseira
 
 
 async def seed():
@@ -122,6 +125,27 @@ async def seed():
         await session.flush()
         print(f"✓ Vínculo responsável-aluno criado")
 
+        # ── 9.1 CARTEIRA DIGITAL ────────────────────────────────
+        wallet = Wallet(
+            aluno_id=aluno.id,
+            saldo=Decimal("50.00"),
+            status=StatusCarteira.ATIVA,
+        )
+        session.add(wallet)
+        await session.flush()
+        print(f"✓ Carteira criada com saldo inicial de R$ 50,00 (id={wallet.id})")
+
+        # ── 9.2 PULSEIRA ─────────────────────────────────────────
+        bracelet = Bracelet(
+            uid="RFID001",
+            codigo="PLS-001",
+            aluno_id=aluno.id,
+            status=StatusPulseira.ATIVA,
+        )
+        session.add(bracelet)
+        await session.flush()
+        print(f"✓ Pulseira criada (uid=RFID001, id={bracelet.id})")
+
         # ── 10. ALOCAÇÃO ──────────────────────────────────────────
         alocacao = Alocacao(
             id=uuid.uuid4(), professor_id=professor.id, turma_id=turma.id,
@@ -165,6 +189,8 @@ async def seed():
         print(f"  Aluno:         {aluno.id}")
         print(f"  Matrícula:     {matricula.id}")
         print(f"  Alocação:      {alocacao.id}")
+        print(f"  Carteira:      {wallet.id}")
+        print(f"  Pulseira:      {bracelet.id}")
         print()
 
 

@@ -1,7 +1,10 @@
 import axios from "axios";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "../services/storage";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+console.log("📡 API_URL:", API_URL);
+console.log("🔗 Login URL:", `${API_URL}/auth/login`);
 
 const ACCESS_TOKEN_KEY = "epass_access_token";
 const REFRESH_TOKEN_KEY = "epass_refresh_token";
@@ -18,6 +21,12 @@ export async function setTokens(access: string, refresh: string) {
 export async function clearTokens() {
   await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
   await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+}
+
+let onForcedLogout: (() => Promise<void>) | null = null;
+
+export function setOnForcedLogout(cb: () => Promise<void>) {
+  onForcedLogout = cb;
 }
 
 const api = axios.create({
@@ -37,7 +46,8 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !error.config?._retry) {
+      error.config._retry = true;
       const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
       if (refreshToken) {
         try {
@@ -49,6 +59,7 @@ api.interceptors.response.use(
           return api(error.config);
         } catch {
           await clearTokens();
+          await onForcedLogout?.();
         }
       }
     }
