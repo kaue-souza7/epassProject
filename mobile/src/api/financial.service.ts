@@ -64,16 +64,21 @@ function toNum(v: string): number {
   return parseFloat(v);
 }
 
-export async function getBalance(): Promise<SaldoResponse> {
-  const { data } = await api.get<RawSaldoResponse>("/financial/me/balance");
+export async function getBalance(alunoId?: string, signal?: AbortSignal): Promise<SaldoResponse> {
+  const { data } = await api.get<RawSaldoResponse>("/financial/me/balance", {
+    params: alunoId ? { aluno_id: alunoId } : undefined,
+    signal,
+  });
   return { aluno_id: data.aluno_id, saldo: toNum(data.saldo) };
 }
 
 export async function getStatement(
-  params?: { page?: number; size?: number }
+  params?: { page?: number; size?: number; aluno_id?: string },
+  signal?: AbortSignal
 ): Promise<ExtratoResponse> {
   const { data } = await api.get<RawExtratoResponse>("/financial/me/statement", {
-    params: { page: params?.page ?? 1, size: params?.size ?? 20 },
+    params: { page: params?.page ?? 1, size: params?.size ?? 20, aluno_id: params?.aluno_id },
+    signal,
   });
   return {
     aluno_id: data.aluno_id,

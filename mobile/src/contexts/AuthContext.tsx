@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import axios from "axios";
 import { api, setTokens, clearTokens, getStoredAccessToken, setOnForcedLogout } from "../api/client";
 import * as SecureStore from "../services/storage";
 import type { User } from "../types";
@@ -17,25 +18,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const restoreSession = useCallback(async () => {
-    try {
-      const token = await getStoredAccessToken();
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-      const { data } = await api.get("/auth/me");
-      setUser(data);
-    } catch {
-      await clearTokens();
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    restoreSession();
-  }, [restoreSession]);
+    let mounted = true;
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const token = await getStoredAccessToken();
+        if (!token) {
+          if (mounted) setIsLoading(false);
+          return;
+        }
+        const { data } = await api.get("/auth/me", { signal: controller.signal });
+        if (mounted) setUser(data);
+      } catch (err) {
+        if (mounted && !axios.isCancel(err)) {
+          await clearTokens();
+        }
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, []);
 
   useEffect(() => {
     setOnForcedLogout(async () => {

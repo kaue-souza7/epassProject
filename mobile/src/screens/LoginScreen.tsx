@@ -98,6 +98,8 @@ export function LoginScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  accessibilityLabel="Email"
+                  accessibilityRole="none"
                 />
                 <View style={styles.divider} />
                 <View style={styles.passwordRow}>
@@ -112,11 +114,15 @@ export function LoginScreen() {
                     }}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
+                    accessibilityLabel="Senha"
+                    accessibilityRole="none"
                   />
                   <TouchableOpacity
                     onPress={() => setShowPassword(!showPassword)}
                     style={styles.eyeButton}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    accessibilityLabel={showPassword ? "Esconder senha" : "Mostrar senha"}
+                    accessibilityRole="button"
                   >
                     <Ionicons
                       name={showPassword ? "eye-off" : "eye"}
@@ -127,7 +133,11 @@ export function LoginScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.forgotButton}>
+              <TouchableOpacity
+                style={styles.forgotButton}
+                accessibilityLabel="Esqueci a senha"
+                accessibilityRole="button"
+              >
                 <Text style={styles.forgotText}>Esqueci a senha</Text>
               </TouchableOpacity>
 
@@ -145,6 +155,8 @@ export function LoginScreen() {
                   onPress={handleLogin}
                   disabled={loading}
                   activeOpacity={0.8}
+                  accessibilityLabel="Entrar"
+                  accessibilityRole="button"
                 >
                   {loading ? (
                     <ActivityIndicator color="#F84F8D" size="small" />

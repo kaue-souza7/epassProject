@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   View,
   Text,
@@ -11,12 +10,22 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import { useSelectedStudent } from "../../hooks/useSelectedStudent";
+
+const ROLE_LABELS: Record<string, string> = {
+  responsavel: "Responsável",
+  professor: "Professor",
+  admin: "Administrador",
+  secretaria: "Secretaria",
+};
 
 export function PerfilScreen() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme, isDark } = useTheme();
   const { clearSelection } = useSelectedStudent();
-  const [darkMode, setDarkMode] = useState(false);
+
+  const roleLabel = ROLE_LABELS[user?.perfil ?? ""] ?? user?.perfil ?? "Usuário";
 
   const handleLogout = () => {
     Alert.alert(
@@ -28,7 +37,7 @@ export function PerfilScreen() {
           text: "Sair",
           style: "destructive",
           onPress: async () => {
-            clearSelection();
+            try { clearSelection(); } catch {}
             await logout();
           },
         },
@@ -50,26 +59,38 @@ export function PerfilScreen() {
                 </Text>
               </View>
               <Text style={styles.userName}>{user?.nome ?? "Usuário"}</Text>
-              <Text style={styles.userRole}>Responsável</Text>
+              <Text style={styles.userRole}>{roleLabel}</Text>
             </View>
 
             <View style={styles.divider} />
 
-            <TouchableOpacity style={styles.menuItem}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              accessibilityLabel="Editar informações"
+              accessibilityRole="button"
+            >
               <Text style={styles.menuItemText}>Editar informações</Text>
               <Ionicons name="chevron-forward" size={20} color="#C7C7C7" />
             </TouchableOpacity>
 
             <View style={styles.divider} />
 
-            <TouchableOpacity style={styles.menuItem}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              accessibilityLabel="Solicitar documentos"
+              accessibilityRole="button"
+            >
               <Text style={styles.menuItemText}>Solicitar documentos</Text>
               <Ionicons name="chevron-forward" size={20} color="#C7C7C7" />
             </TouchableOpacity>
           </View>
 
           <View style={styles.card}>
-            <TouchableOpacity style={styles.menuItem}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              accessibilityLabel="Acessibilidade"
+              accessibilityRole="button"
+            >
               <Text style={styles.menuItemText}>Acessibilidade</Text>
               <Ionicons name="chevron-forward" size={20} color="#C7C7C7" />
             </TouchableOpacity>
@@ -79,16 +100,23 @@ export function PerfilScreen() {
             <View style={styles.switchItem}>
               <Text style={styles.menuItemText}>Modo escuro</Text>
               <Switch
-                value={darkMode}
-                onValueChange={setDarkMode}
+                value={isDark}
+                onValueChange={toggleTheme}
                 trackColor={{ false: "#E5E5E5", true: "#FF5B8F" }}
                 thumbColor="white"
+                accessibilityLabel="Alternar modo escuro"
+                accessibilityRole="switch"
               />
             </View>
 
             <View style={styles.divider} />
 
-            <TouchableOpacity style={styles.logoutItem} onPress={handleLogout}>
+            <TouchableOpacity
+              style={styles.logoutItem}
+              onPress={handleLogout}
+              accessibilityLabel="Sair da conta"
+              accessibilityRole="button"
+            >
               <Text style={styles.logoutText}>Sair</Text>
               <Ionicons name="chevron-forward" size={20} color="#FF5B8F" />
             </TouchableOpacity>

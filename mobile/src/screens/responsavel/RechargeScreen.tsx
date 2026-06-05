@@ -14,7 +14,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRecharge, useWallet } from "../../hooks/useWallet";
+import { useRecharge } from "../../hooks/useWallet";
 import type { ResponsavelStackParamList } from "../../types/navigation";
 
 type NavProp = NativeStackNavigationProp<ResponsavelStackParamList, "Recharge">;
@@ -24,7 +24,6 @@ const QUICK_VALUES = [10, 20, 50, 100];
 export function RechargeScreen() {
   const navigation = useNavigation<NavProp>();
   const { realizarRecarga, loading } = useRecharge();
-  const { refetch: refetchWallet } = useWallet();
   const [amount, setAmount] = useState("");
 
   const numericAmount = parseFloat(amount.replace(",", "."));
@@ -41,7 +40,6 @@ export function RechargeScreen() {
 
     try {
       await realizarRecarga(numericAmount);
-      await refetchWallet();
       Alert.alert("Recarga realizada", `Foram adicionados R$ ${numericAmount.toFixed(2)} à carteira.`, [
         {
           text: "OK",
@@ -62,7 +60,11 @@ export function RechargeScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              accessibilityLabel="Voltar"
+              accessibilityRole="button"
+            >
               <Ionicons name="chevron-back" size={28} color="#1F1F1F" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Recarregar</Text>
@@ -93,6 +95,8 @@ export function RechargeScreen() {
                     numericAmount === val && styles.quickButtonActive,
                   ]}
                   onPress={() => handleQuickAmount(val)}
+                  accessibilityLabel={`Recarregar R$ ${val}`}
+                  accessibilityRole="button"
                 >
                   <Text
                     style={[
@@ -113,6 +117,8 @@ export function RechargeScreen() {
               ]}
               onPress={handleConfirm}
               disabled={isNaN(numericAmount) || numericAmount <= 0 || loading}
+              accessibilityLabel="Confirmar recarga"
+              accessibilityRole="button"
             >
               {loading ? (
                 <ActivityIndicator color="white" />

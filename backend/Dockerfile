@@ -1,22 +1,24 @@
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim
 
 WORKDIR /app
-COPY . .
-RUN pip install --no-cache-dir build && python -m build --wheel
 
-FROM python:3.12-slim AS runtime
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
 RUN groupadd -r epass && useradd -r -g epass epass
 
-COPY --from=builder /app/dist/*.whl /tmp/
-RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl
+COPY pyproject.toml .
+RUN pip install --no-cache-dir .
 
 COPY . .
+RUN chmod +x /app/entrypoint.sh
 
 RUN mkdir -p storage && chown -R epass:epass storage
+
 USER epass
 
 EXPOSE 8000
 
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

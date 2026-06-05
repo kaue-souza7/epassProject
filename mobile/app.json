@@ -32,7 +32,8 @@
       "expo-secure-store",
       "expo-local-authentication",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      "expo-web-browser"
     ]
   }
 }

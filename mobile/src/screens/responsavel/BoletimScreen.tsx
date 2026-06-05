@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigation } from "@react-navigation/native";
+import { useState, useCallback } from "react";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   View,
@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSelectedStudent } from "../../hooks/useSelectedStudent";
 import { useReportCard } from "../../hooks/useReportCard";
+import { ErrorState } from "../../components/ErrorState";
 import type { ResponsavelStackParamList } from "../../types/navigation";
 import type { SituacaoAluno } from "../../types";
 
@@ -51,24 +52,34 @@ export function BoletimScreen() {
     bimestre
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
+
   if (!selectedChild) {
     return (
       <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              accessibilityLabel="Voltar"
+              accessibilityRole="button"
+            >
               <Ionicons name="chevron-back" size={28} color="#1F1F1F" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Boletim</Text>
             <View style={{ width: 28 }} />
           </View>
           <View style={styles.center}>
-            <Text style={styles.errorText}>Nenhum aluno selecionado</Text>
+            <Text style={styles.noStudentText}>Nenhum aluno selecionado</Text>
             <TouchableOpacity
-              style={styles.retryButton}
+              style={styles.noStudentButton}
               onPress={() => navigation.navigate("SelectStudent")}
             >
-              <Text style={styles.retryText}>Selecionar aluno</Text>
+              <Text style={styles.noStudentButtonText}>Selecionar aluno</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -108,15 +119,17 @@ export function BoletimScreen() {
         {/* Bimestre selector chips */}
         <View style={styles.chipsRow}>
           {BIMESTRES.map((b) => (
-            <TouchableOpacity
-              key={b}
-              style={[
-                styles.chip,
-                bimestre === b && styles.chipActive,
-              ]}
-              onPress={() => setBimestre(b)}
-              activeOpacity={0.7}
-            >
+              <TouchableOpacity
+                key={b}
+                style={[
+                  styles.chip,
+                  bimestre === b && styles.chipActive,
+                ]}
+                onPress={() => setBimestre(b)}
+                activeOpacity={0.7}
+                accessibilityLabel={`${b}º bimestre`}
+                accessibilityRole="button"
+              >
               <Text
                 style={[
                   styles.chipText,
@@ -134,13 +147,7 @@ export function BoletimScreen() {
             <ActivityIndicator size="large" color="#FF5B8F" />
           </View>
         ) : error ? (
-          <View style={styles.center}>
-            <Ionicons name="alert-circle-outline" size={56} color="#FF5B8F" />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={refetch}>
-              <Text style={styles.retryText}>Tentar novamente</Text>
-            </TouchableOpacity>
-          </View>
+          <ErrorState message={error} onRetry={refetch} />
         ) : !reportCard || reportCard.disciplinas.length === 0 ? (
           <View style={styles.center}>
             <Ionicons name="document-text-outline" size={56} color="#D0D0D0" />
@@ -247,14 +254,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 32,
   },
-  errorText: {
+  noStudentText: {
     color: "#333",
     fontSize: 15,
     fontWeight: "500",
     textAlign: "center",
     marginTop: 16,
   },
-  retryButton: {
+  noStudentButton: {
     borderWidth: 2,
     borderColor: "#FF5B8F",
     borderRadius: 999,
@@ -262,7 +269,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginTop: 24,
   },
-  retryText: {
+  noStudentButtonText: {
     color: "#FF5B8F",
     fontSize: 16,
     fontWeight: "600",

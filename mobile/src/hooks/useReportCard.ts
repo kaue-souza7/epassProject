@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useApi } from "./useApi";
 import { getReportCard, getAnnualReport } from "../api/report.service";
 import type { ReportCard, ReportCardAnnual } from "../types/responsavel";
 
@@ -13,34 +13,13 @@ export function useReportCard(
   enrollmentId: string | null,
   bimestre: number
 ): UseReportCardResult {
-  const [reportCard, setReportCard] = useState<ReportCard | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: reportCard, loading, error, refetch } = useApi(
+    (signal) => getReportCard(enrollmentId!, bimestre, signal),
+    [enrollmentId, bimestre],
+    { enabled: !!enrollmentId, errorMessage: "Erro ao carregar boletim" }
+  );
 
-  const fetch = useCallback(async () => {
-    if (!enrollmentId) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getReportCard(enrollmentId, bimestre);
-      setReportCard(result);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Erro ao carregar boletim";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [enrollmentId, bimestre]);
-
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  return { reportCard, loading, error, refetch: fetch };
+  return { reportCard, loading, error, refetch };
 }
 
 interface UseAnnualReportResult {
@@ -53,34 +32,11 @@ interface UseAnnualReportResult {
 export function useAnnualReport(
   enrollmentId: string | null
 ): UseAnnualReportResult {
-  const [annualReport, setAnnualReport] = useState<ReportCardAnnual | null>(
-    null
+  const { data: annualReport, loading, error, refetch } = useApi(
+    (signal) => getAnnualReport(enrollmentId!, signal),
+    [enrollmentId],
+    { enabled: !!enrollmentId, errorMessage: "Erro ao carregar boletim anual" }
   );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async () => {
-    if (!enrollmentId) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getAnnualReport(enrollmentId);
-      setAnnualReport(result);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Erro ao carregar boletim anual";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [enrollmentId]);
-
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  return { annualReport, loading, error, refetch: fetch };
+  return { annualReport, loading, error, refetch };
 }

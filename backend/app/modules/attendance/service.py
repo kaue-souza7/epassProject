@@ -1,20 +1,26 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date, timezone
 
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import Conflict, NotFound
+from app.modules.allocations.models import Alocacao
+from app.modules.enrollments.models import Matricula
 from app.modules.attendance.models import Chamada, Frequencia
 from app.modules.attendance.repository import ChamadaRepository, FrequenciaRepository
-from app.modules.attendance.schemas import ChamadaAbrir, FrequenciaRegistrar
+from app.modules.attendance.schemas import ChamadaAbrir, FrequenciaRegistrar, FrequenciaResumoResponse
 from app.modules.allocations.service import AlocacaoService
+from app.modules.dashboard.repository import DashboardRepository
 from app.modules.enrollments.repository import MatriculaRepository
 from app.shared.enums import StatusFrequencia
 
 
 class ChamadaService:
     def __init__(self, session: AsyncSession) -> None:
+        self._session = session
         self._repo = ChamadaRepository(session)
         self._freq_repo = FrequenciaRepository(session)
         self._alocacao_service = AlocacaoService(session)
@@ -84,3 +90,66 @@ class ChamadaService:
         self, alocacao_id: uuid.UUID, page: int = 1, size: int = 20,
     ) -> tuple[list[Chamada], int]:
         return await self._repo.get_by_alocacao(alocacao_id, page=page, size=size)
+
+    async def resumo_frequencia_responsavel(
+        self, matricula_id: uuid.UUID,
+    ) -> FrequenciaResumoResponse:
+        matricula = await self._matricula_repo.get_by_id(matricula_id)
+        if matricula is None:
+            raise NotFound("Matrícula não encontrada")
+
+        dashboard_repo = DashboardRepository(self._session)
+
+        frequencia_media = await dashboard_repo.frequencia_media_matricula(matricula_id)
+
+        chamada_ids_subq = (
+            select(Chamada.id)
+            .join(Alocacao, Chamada.alocacao_id == Alocacao.id)
+            .where(Alocacao.turma_id == (
+                select(Matricula.turma_id).where(Matricula.id == matricula_id)
+            ).scalar_subquery())
+        ).subquery()
+
+        all_freq = await self._session.execute(
+            select(Frequencia).where(
+                and_(
+                    Frequencia.matricula_id == matricula_id,
+                    Frequencia.chamada_id.in_(select(chamada_ids_subq)),
+                ),
+            ),
+        )
+        todas = list(all_freq.scalars().all())
+
+        total_aulas = len(todas)
+        presencas = sum(1 for f in todas if f.status == StatusFrequencia.PRESENTE)
+        faltas = sum(1 for f in todas if f.status == StatusFrequencia.FALTA)
+        faltas_justificadas = sum(
+            1 for f in todas if f.status == StatusFrequencia.FALTA_JUSTIFICADA
+        )
+
+        hoje = date.today()
+        freq_hoje = await self._session.execute(
+            select(Frequencia)
+            .join(Chamada, Frequencia.chamada_id == Chamada.id)
+            .where(
+                and_(
+                    Frequencia.matricula_id == matricula_id,
+                    func.date(Chamada.data_hora_aula) == hoje,
+                ),
+            ),
+        )
+        freq_hoje_row = freq_hoje.scalar_one_or_none()
+        situacao_hoje = freq_hoje_row.status.value if freq_hoje_row else None
+
+        return FrequenciaResumoResponse(
+            matricula_id=matricula_id,
+            aluno_id=matricula.aluno_id,
+            aluno_nome=matricula.aluno.nome if matricula.aluno else None,
+            turma_codigo=matricula.turma.codigo if matricula.turma else None,
+            frequencia_media=frequencia_media,
+            total_aulas=total_aulas,
+            presencas=presencas,
+            faltas=faltas,
+            faltas_justificadas=faltas_justificadas,
+            situacao_hoje=situacao_hoje,
+        )

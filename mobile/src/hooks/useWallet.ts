@@ -1,13 +1,19 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   getBalance,
   getStatement,
   recharge as apiRecharge,
-  type SaldoResponse,
   type ExtratoResponse,
   type RecargaResponse,
   type RecargaRequest,
 } from "../api/financial.service";
+import { useSelectedStudent } from "./useSelectedStudent";
+import { useApi } from "./useApi";
+
+interface WalletData {
+  saldo: number;
+  ultimaMovimentacao: string;
+}
 
 interface UseWalletResult {
   saldo: number | null;
@@ -18,42 +24,35 @@ interface UseWalletResult {
 }
 
 export function useWallet(): UseWalletResult {
-  const [saldo, setSaldo] = useState<number | null>(null);
-  const [ultimaMovimentacao, setUltimaMovimentacao] = useState<string | null>(
-    null
+  const { selectedChild } = useSelectedStudent();
+  const alunoId = selectedChild?.aluno_id;
+
+  const fetchWallet = useCallback(
+    async (signal: AbortSignal): Promise<WalletData> => {
+      const balance = await getBalance(alunoId, signal);
+      const statement = await getStatement({ size: 1, aluno_id: alunoId }, signal);
+      const ultimaMov =
+        statement.movimentacoes.length > 0
+          ? `${statement.movimentacoes[0].tipo === "recarga" ? "+" : "-"} R$ ${statement.movimentacoes[0].valor.toFixed(2)} - ${statement.movimentacoes[0].descricao ?? ""}`
+          : "Nenhuma movimentação";
+      return { saldo: balance.saldo, ultimaMovimentacao: ultimaMov };
+    },
+    [alunoId]
   );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const balance = await getBalance();
-      const statement = await getStatement({ size: 1 });
-      setSaldo(balance.saldo);
-      if (statement.movimentacoes.length > 0) {
-        const last = statement.movimentacoes[0];
-        setUltimaMovimentacao(
-          `${last.tipo === "recarga" ? "+" : "-"} R$ ${last.valor.toFixed(2)} - ${last.descricao ?? ""}`
-        );
-      } else {
-        setUltimaMovimentacao("Nenhuma movimentação");
-      }
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Erro ao carregar carteira";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, loading, error, refetch } = useApi(
+    fetchWallet,
+    [alunoId],
+    { enabled: !!alunoId, errorMessage: "Erro ao carregar carteira" }
+  );
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  return { saldo, ultimaMovimentacao, loading, error, refetch: fetch };
+  return {
+    saldo: data?.saldo ?? null,
+    ultimaMovimentacao: data?.ultimaMovimentacao ?? null,
+    loading,
+    error,
+    refetch,
+  };
 }
 
 interface UseRechargeResult {
@@ -63,6 +62,8 @@ interface UseRechargeResult {
 }
 
 export function useRecharge(): UseRechargeResult {
+  const { selectedChild } = useSelectedStudent();
+  const alunoId = selectedChild?.aluno_id;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,7 +83,7 @@ export function useRecharge(): UseRechargeResult {
         setLoading(false);
       }
     },
-    []
+    [alunoId]
   );
 
   return { realizarRecarga, loading, error };
@@ -99,28 +100,14 @@ export function useStatement(
   page: number = 1,
   size: number = 20
 ): UseStatementResult {
-  const [extrato, setExtrato] = useState<ExtratoResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { selectedChild } = useSelectedStudent();
+  const alunoId = selectedChild?.aluno_id;
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getStatement({ page, size });
-      setExtrato(result);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Erro ao carregar extrato";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, size]);
+  const { data: extrato, loading, error, refetch } = useApi(
+    (signal) => getStatement({ page, size, aluno_id: alunoId }, signal),
+    [page, size, alunoId],
+    { enabled: !!alunoId, errorMessage: "Erro ao carregar extrato" }
+  );
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  return { extrato, loading, error, refetch: fetch };
+  return { extrato, loading, error, refetch };
 }

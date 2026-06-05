@@ -18,14 +18,14 @@ import { AvisosScreen } from "./AvisosScreen";
 import { PerfilScreen } from "./PerfilScreen";
 import type { Child } from "../../types/responsavel";
 
-type HomeTabParamList = {
+type ResponsavelTabParamList = {
   HomeTab: undefined;
   Relatorios: undefined;
   Avisos: undefined;
   Perfil: undefined;
 };
 
-const Tab = createBottomTabNavigator<HomeTabParamList>();
+const Tab = createBottomTabNavigator<ResponsavelTabParamList>();
 
 const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   HomeTab: "home",
@@ -83,6 +83,8 @@ function StudentSelector() {
         style={styles.selectorCard}
         onPress={toggle}
         activeOpacity={hasMultiple ? 0.7 : 1}
+        accessibilityLabel={`Aluno selecionado: ${selectedChild.aluno_nome}${hasMultiple ? ". Toque para trocar de aluno." : ""}`}
+        accessibilityRole="button"
       >
         <View style={styles.selectorAvatar}>
           <Text style={styles.selectorAvatarText}>
@@ -160,15 +162,15 @@ function CustomTabBar(props: BottomTabBarProps) {
               style={styles.tabItem}
               onPress={() => props.navigation.navigate(route.name)}
               activeOpacity={0.7}
+              accessibilityLabel={TAB_LABELS[route.name] ?? route.name}
+              accessibilityRole="tab"
             >
               <Ionicons
                 name={TAB_ICONS[route.name] ?? "ellipse"}
                 size={20}
                 color={color}
               />
-              <Text
-                style={[styles.tabLabel, { color }]}
-              >
+              <Text style={[styles.tabLabel, { color }]}>
                 {TAB_LABELS[route.name] ?? route.name}
               </Text>
             </TouchableOpacity>
@@ -179,7 +181,7 @@ function CustomTabBar(props: BottomTabBarProps) {
   );
 }
 
-export function HomePlaceholder() {
+export function ResponsavelTabNavigator() {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}

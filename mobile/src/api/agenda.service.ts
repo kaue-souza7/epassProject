@@ -10,16 +10,17 @@ export interface EventsParams {
 }
 
 export async function getEvents(
-  params?: EventsParams
+  params?: EventsParams,
+  signal?: AbortSignal
 ): Promise<PaginatedResponse<AgendaEvent>> {
   const { data } = await api.get<PaginatedResponse<AgendaEvent>>(
     "/agenda/events",
-    { params }
+    { params, signal }
   );
   return data;
 }
 
-export async function getEvent(id: string): Promise<EventDetail> {
-  const { data } = await api.get<EventDetail>(`/agenda/events/${id}`);
+export async function getEvent(id: string, signal?: AbortSignal): Promise<EventDetail> {
+  const { data } = await api.get<EventDetail>(`/agenda/events/${id}`, { signal });
   return data;
 }

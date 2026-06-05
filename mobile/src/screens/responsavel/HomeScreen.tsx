@@ -1,4 +1,6 @@
-import { useNavigation } from "@react-navigation/native";
+import { useState, useCallback, useEffect } from "react";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   View,
@@ -8,22 +10,19 @@ import {
   ActivityIndicator,
   ScrollView,
   SafeAreaView,
+  RefreshControl,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { useDashboard } from "../../hooks/useDashboard";
 import { useSelectedStudent } from "../../hooks/useSelectedStudent";
 import { useEvents } from "../../hooks/useAgenda";
 import { useWallet } from "../../hooks/useWallet";
+import { useAttendance } from "../../hooks/useAttendance";
+import { useDashboard } from "../../hooks/useDashboard";
+import { ErrorState } from "../../components/ErrorState";
 import type { ResponsavelStackParamList } from "../../types/navigation";
 
 type NavProp = NativeStackNavigationProp<ResponsavelStackParamList, "HomeTabs">;
-
-const MOCK_EVENTS: Array<{ id: string; title: string; category: string; days_remaining: number }> = [
-  { id: "mock-1", title: "Excursão", category: "Escola", days_remaining: 3 },
-  { id: "mock-2", title: "Reunião de pais", category: "Escola", days_remaining: 5 },
-  { id: "mock-3", title: "Prova", category: "Matemática", days_remaining: 7 },
-];
 
 function daysUntil(dateStr: string): number {
   const now = new Date();
@@ -34,34 +33,59 @@ function daysUntil(dateStr: string): number {
 
 export function HomeScreen() {
   const navigation = useNavigation<NavProp>();
-  const { data: dashboard, loading, error, refetch } = useDashboard();
-  const { selectedChild } = useSelectedStudent();
-  const { events, loading: loadingEvents } = useEvents({ size: 5 });
-  const { saldo, loading: loadingWallet } = useWallet();
+  const { selectedChild, selectChild } = useSelectedStudent();
+  const { events, loading: loadingEvents, refetch: refetchEvents } = useEvents({ size: 5 });
+  const { saldo, loading: loadingWallet, refetch: refetchWallet } = useWallet();
+  const { frequency, loading: loadingFrequency, refetch: refetchFrequency } = useAttendance();
+  const { data: dashboardData, refetch: refetchDashboard } = useDashboard();
+  const insets = useSafeAreaInsets();
+  const [refreshing, setRefreshing] = useState(false);
 
-  if (loading) {
+  useFocusEffect(
+    useCallback(() => {
+      refetchWallet();
+      refetchFrequency();
+      refetchEvents();
+      refetchDashboard();
+    }, [refetchWallet, refetchFrequency, refetchEvents, refetchDashboard])
+  );
+
+  useEffect(() => {
+    if (!dashboardData || !selectedChild) return;
+    const updated = dashboardData.filhos?.find(
+      (f) => f.aluno_id === selectedChild.aluno_id
+    );
+    if (!updated) return;
+    if (
+      updated.media_geral !== selectedChild.media_geral ||
+      updated.frequencia_media !== selectedChild.frequencia_media ||
+      updated.situacao !== selectedChild.situacao
+    ) {
+      selectChild(updated);
+    }
+  }, [dashboardData, selectedChild, selectChild]);
+
+  // Altura ocupada pelo StudentSelector (~52px: paddingVertical 16 + avatar 32)
+  // + selectorOuter marginBottom (8px) + TabBar (~50px: paddingVertical 12 + ícone 20 + label 12)
+  // Valores baseados nos estilos de ResponsavelTabNavigator.tsx
+  const TAB_BAR_OVERLAY_HEIGHT = 110;
+  const scrollBottomPadding = TAB_BAR_OVERLAY_HEIGHT + insets.bottom + 16;
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetchEvents(), refetchWallet(), refetchFrequency(), refetchDashboard()]);
+    setRefreshing(false);
+  }, [refetchEvents, refetchWallet, refetchFrequency]);
+
+  const isLoading = loadingEvents && !events;
+
+  if (isLoading) {
     return (
       <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#FF5B8F" />
             <Text style={styles.statusText}>Carregando...</Text>
-          </View>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.center}>
-            <Ionicons name="alert-circle-outline" size={56} color="#FF5B8F" />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={refetch}>
-              <Text style={styles.retryText}>Tentar novamente</Text>
-            </TouchableOpacity>
           </View>
         </SafeAreaView>
       </View>
@@ -87,20 +111,47 @@ export function HomeScreen() {
   }
 
   const eventList = events?.items ?? [];
-  const hasRealEvents = eventList.length > 0;
-  const displayEvents = hasRealEvents
-    ? eventList.slice(0, 5).map((e) => ({
-        id: e.id,
-        title: e.titulo,
-        category: "Evento",
-        days_remaining: daysUntil(e.data_inicio),
-      }))
-    : MOCK_EVENTS;
+  const displayEvents = eventList.slice(0, 5).map((e) => ({
+    id: e.id,
+    title: e.titulo,
+    category: "Evento",
+    days_remaining: daysUntil(e.data_inicio),
+  }));
+
+  const mediaGeral = selectedChild.media_geral;
+  const freqPct = frequency?.frequencia_media ?? selectedChild.frequencia_media;
+  const progressColor =
+    freqPct != null
+      ? freqPct >= 85
+         ? "#4CAF50"
+         : freqPct >= 70
+           ? "#FF9800"
+           : "#F44336"
+       : "#C7C7C7";
+
+  const situacaoHoje = frequency?.situacao_hoje;
+  const hojeLabel =
+    situacaoHoje === "presente"
+       ? "Compareceu à aula hoje"
+       : situacaoHoje === "falta"
+         ? "Falta registrada hoje"
+         : situacaoHoje === "falta_justificada"
+           ? "Falta justificada hoje"
+           : null;
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#FF5B8F"
+            />
+          }
+        >
           <Text style={styles.headerTitle}>Resumo</Text>
 
           <LinearGradient
@@ -120,6 +171,8 @@ export function HomeScreen() {
                 <TouchableOpacity
                   style={styles.heroButton}
                   onPress={() => navigation.navigate("Boletim")}
+                  accessibilityLabel="Ver boletim do aluno"
+                  accessibilityRole="button"
                 >
                   <Text style={styles.heroButtonText}>Ver boletim</Text>
                 </TouchableOpacity>
@@ -127,11 +180,134 @@ export function HomeScreen() {
             </View>
           </LinearGradient>
 
+          {mediaGeral != null && (
+            <View style={styles.statsRow}>
+              <View style={[styles.statCard, { backgroundColor: "#FFF0F3" }]}>
+                <Text style={styles.statLabel}>Média Geral</Text>
+                <Text
+                  style={[
+                    styles.statValue,
+                    { color: mediaGeral >= 6 ? "#4CAF50" : "#F44336" },
+                  ]}
+                >
+                  {mediaGeral.toFixed(1)}
+                </Text>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: "#E8F5E9" }]}>
+                <Text style={styles.statLabel}>Frequência</Text>
+                {loadingFrequency ? (
+                  <ActivityIndicator size="small" color="#4CAF50" />
+                ) : (
+                  <Text style={[styles.statValue, { color: progressColor }]}>
+                    {freqPct != null ? `${freqPct.toFixed(0)}%` : "—"}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+
+          {frequency && (
+            <View style={styles.freqDetailCard}>
+              {hojeLabel && (
+                <View style={styles.hojeRow}>
+                  <Ionicons
+                    name={
+                      situacaoHoje === "presente"
+                        ? "checkmark-circle"
+                        : situacaoHoje === "falta_justificada"
+                          ? "time"
+                          : "alert-circle"
+                    }
+                    size={20}
+                    color={
+                      situacaoHoje === "presente"
+                        ? "#4CAF50"
+                        : situacaoHoje === "falta_justificada"
+                          ? "#FF9800"
+                          : "#F44336"
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.hojeText,
+                      {
+                        color:
+                          situacaoHoje === "presente"
+                            ? "#4CAF50"
+                            : situacaoHoje === "falta_justificada"
+                              ? "#FF9800"
+                              : "#F44336",
+                      },
+                    ]}
+                  >
+                    {hojeLabel}
+                  </Text>
+                </View>
+              )}
+              {freqPct != null && (
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressBg}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${Math.min(freqPct, 100)}%`,
+                          backgroundColor: progressColor,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+              )}
+              {frequency.total_aulas > 0 && (
+                <View style={styles.freqBreakdown}>
+                  <Text style={styles.freqBreakdownItem}>
+                    <Text style={{ color: "#4CAF50", fontWeight: "700" }}>
+                      {frequency.presencas}
+                    </Text>{" "}
+                    presenças
+                  </Text>
+                  <Text style={styles.freqBreakdownItem}>
+                    <Text style={{ color: "#F44336", fontWeight: "700" }}>
+                      {frequency.faltas}
+                    </Text>{" "}
+                    faltas
+                  </Text>
+                  {frequency.faltas_justificadas > 0 && (
+                    <Text style={styles.freqBreakdownItem}>
+                      <Text style={{ color: "#FF9800", fontWeight: "700" }}>
+                        {frequency.faltas_justificadas}
+                      </Text>{" "}
+                      justificadas
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+
           <Text style={styles.sectionTitle}>Eventos</Text>
 
-          {loadingEvents && !hasRealEvents ? (
+          {loadingEvents && !events ? (
             <View style={styles.eventsLoading}>
               <ActivityIndicator size="small" color="#FF5B8F" />
+            </View>
+          ) : displayEvents.length === 0 ? (
+            <View style={styles.card}>
+              <View style={styles.emptyEvents}>
+                <Ionicons name="calendar-outline" size={40} color="#C7C7C7" />
+                <Text style={styles.emptyEventsText}>Nenhum evento nos próximos dias</Text>
+              </View>
+              <View style={styles.cardDivider} />
+              <TouchableOpacity
+                style={styles.footerLink}
+                onPress={() => navigation.navigate("Agenda")}
+                accessibilityLabel="Verificar agenda completa"
+                accessibilityRole="button"
+              >
+                <Text style={styles.footerLinkText}>Verificar agenda completa</Text>
+                <Ionicons name="arrow-forward" size={16} color="#FF5B8F" />
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.card}>
@@ -159,6 +335,8 @@ export function HomeScreen() {
               <TouchableOpacity
                 style={styles.footerLink}
                 onPress={() => navigation.navigate("Agenda")}
+                accessibilityLabel="Verificar agenda completa"
+                accessibilityRole="button"
               >
                 <Text style={styles.footerLinkText}>Verificar agenda completa</Text>
                 <Ionicons name="arrow-forward" size={16} color="#FF5B8F" />
@@ -171,6 +349,8 @@ export function HomeScreen() {
             style={styles.card}
             onPress={() => navigation.navigate("Wallet")}
             activeOpacity={0.7}
+            accessibilityLabel="Ver carteira"
+            accessibilityRole="button"
           >
             <View style={styles.walletMainRow}>
               <Text style={styles.walletLabel}>Saldo disponível</Text>
@@ -243,6 +423,27 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1F1F1F",
     marginBottom: 24,
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 20,
+    padding: 16,
+    alignItems: "center",
+  },
+  statLabel: {
+    fontSize: 13,
+    color: "#7A7A7A",
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: "700",
   },
   heroCard: {
     borderRadius: 40,
@@ -369,19 +570,50 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1F1F1F",
   },
-  walletFutureRow: {
+  freqDetailCard: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 24,
+  },
+  hojeRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 12,
+  },
+  hojeText: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  progressContainer: {
+    marginBottom: 12,
+  },
+  progressBg: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#E5E5E5",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 5,
+  },
+  freqBreakdown: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  freqBreakdownItem: {
+    fontSize: 13,
+    color: "#7A7A7A",
+  },
+  emptyEvents: {
+    alignItems: "center",
     paddingVertical: 16,
+    gap: 8,
   },
-  walletFutureLabel: {
-    fontSize: 15,
-    color: "#1F1F1F",
-    fontWeight: "500",
-  },
-  walletFutureValue: {
-    fontSize: 15,
+  emptyEventsText: {
+    fontSize: 14,
     color: "#C7C7C7",
     fontWeight: "500",
   },

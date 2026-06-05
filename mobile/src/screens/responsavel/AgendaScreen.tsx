@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
@@ -12,6 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useEvents } from "../../hooks/useAgenda";
+import { ErrorState } from "../../components/ErrorState";
 import type { AgendaEvent } from "../../types/responsavel";
 import type { ResponsavelStackParamList } from "../../types/navigation";
 
@@ -62,30 +64,35 @@ function EventCard({ item }: { item: AgendaEvent }) {
 export function AgendaScreen() {
   const navigation = useNavigation<NavProp>();
   const { events, loading, error, refetch } = useEvents({ size: PAGE_SIZE });
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Voltar"
+            accessibilityRole="button"
+          >
             <Ionicons name="chevron-back" size={28} color="#1F1F1F" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Agenda</Text>
           <View style={{ width: 28 }} />
         </View>
 
-        {loading ? (
+        {loading && !events ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#FF5B8F" />
           </View>
         ) : error ? (
-          <View style={styles.center}>
-            <Ionicons name="alert-circle-outline" size={56} color="#FF5B8F" />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={refetch}>
-              <Text style={styles.retryText}>Tentar novamente</Text>
-            </TouchableOpacity>
-          </View>
+          <ErrorState message={error} onRetry={refetch} />
         ) : (
           <FlatList
             data={events?.items ?? []}
@@ -94,8 +101,8 @@ export function AgendaScreen() {
             contentContainerStyle={styles.list}
             refreshControl={
               <RefreshControl
-                refreshing={loading}
-                onRefresh={refetch}
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
                 tintColor="#FF5B8F"
               />
             }
@@ -137,26 +144,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 32,
-  },
-  errorText: {
-    color: "#333",
-    fontSize: 15,
-    fontWeight: "500",
-    textAlign: "center",
-    marginTop: 16,
-  },
-  retryButton: {
-    borderWidth: 2,
-    borderColor: "#FF5B8F",
-    borderRadius: 999,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    marginTop: 24,
-  },
-  retryText: {
-    color: "#FF5B8F",
-    fontSize: 16,
-    fontWeight: "600",
   },
   list: {
     paddingHorizontal: 24,

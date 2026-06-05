@@ -12,8 +12,11 @@ from app.modules.attendance.schemas import (
     ChamadaResponse,
     FrequenciaComMatriculaResponse,
     FrequenciaRegistrar,
+    FrequenciaResumoResponse,
 )
 from app.modules.attendance.service import ChamadaService
+from app.modules.enrollments.repository import MatriculaRepository
+from app.modules.students.repository import ResponsavelAlunoRepository
 from app.shared.enums import Perfil
 from app.shared.schemas import PaginatedResponse
 
@@ -107,3 +110,31 @@ async def registrar_frequencias(
 ) -> None:
     service = ChamadaService(session)
     await service.registrar_frequencias(body.chamada_id, body.frequencias)
+
+
+@router.get(
+    "/me/summary",
+    response_model=FrequenciaResumoResponse,
+    dependencies=[Depends(require_roles(Perfil.RESPONSAVEL))],
+)
+async def meu_resumo_frequencia(
+    aluno_id: uuid.UUID | None = Query(None),
+    current_user: dict = Depends(require_roles(Perfil.RESPONSAVEL)),
+    session: AsyncSession = Depends(get_session),
+) -> FrequenciaResumoResponse:
+    if aluno_id is None:
+        repo = ResponsavelAlunoRepository(session)
+        vinculos = await repo.get_by_responsavel(uuid.UUID(current_user["sub"]))
+        if not vinculos:
+            from app.core.exceptions import NotFound
+            raise NotFound("Nenhum aluno vinculado a este responsável")
+        aluno_id = vinculos[0].aluno_id
+
+    matricula_repo = MatriculaRepository(session)
+    matricula = await matricula_repo.get_active_by_aluno(aluno_id)
+    if matricula is None:
+        from app.core.exceptions import NotFound
+        raise NotFound("Nenhuma matrícula ativa encontrada para este aluno")
+
+    service = ChamadaService(session)
+    return await service.resumo_frequencia_responsavel(matricula.id)

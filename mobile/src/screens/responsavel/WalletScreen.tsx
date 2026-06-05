@@ -1,4 +1,5 @@
-import { useNavigation } from "@react-navigation/native";
+import { useCallback } from "react";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   View,
@@ -10,6 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useWallet } from "../../hooks/useWallet";
+import { ErrorState } from "../../components/ErrorState";
 import type { ResponsavelStackParamList } from "../../types/navigation";
 
 type NavProp = NativeStackNavigationProp<ResponsavelStackParamList, "Wallet">;
@@ -18,11 +20,21 @@ export function WalletScreen() {
   const navigation = useNavigation<NavProp>();
   const { saldo, ultimaMovimentacao, loading, error, refetch } = useWallet();
 
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Voltar"
+            accessibilityRole="button"
+          >
             <Ionicons name="chevron-back" size={28} color="#1F1F1F" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Carteira</Text>
@@ -34,13 +46,7 @@ export function WalletScreen() {
             <ActivityIndicator size="large" color="#FF5B8F" />
           </View>
         ) : error ? (
-          <View style={styles.center}>
-            <Ionicons name="alert-circle-outline" size={56} color="#FF5B8F" />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={refetch}>
-              <Text style={styles.retryText}>Tentar novamente</Text>
-            </TouchableOpacity>
-          </View>
+          <ErrorState message={error} onRetry={refetch} />
         ) : (
           <View style={styles.content}>
             <View style={styles.balanceCard}>
@@ -57,6 +63,8 @@ export function WalletScreen() {
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => navigation.navigate("Statement")}
+                accessibilityLabel="Ver extrato financeiro"
+                accessibilityRole="button"
               >
                 <View style={[styles.actionIcon, { backgroundColor: "#FFF0F3" }]}>
                   <Ionicons name="list-outline" size={24} color="#FF5B8F" />
@@ -67,6 +75,8 @@ export function WalletScreen() {
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => navigation.navigate("Recharge")}
+                accessibilityLabel="Fazer recarga"
+                accessibilityRole="button"
               >
                 <View style={[styles.actionIcon, { backgroundColor: "#E8F5E9" }]}>
                   <Ionicons name="add-circle-outline" size={24} color="#4CAF50" />
@@ -106,26 +116,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 32,
-  },
-  errorText: {
-    color: "#333",
-    fontSize: 15,
-    fontWeight: "500",
-    textAlign: "center",
-    marginTop: 16,
-  },
-  retryButton: {
-    borderWidth: 2,
-    borderColor: "#FF5B8F",
-    borderRadius: 999,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    marginTop: 24,
-  },
-  retryText: {
-    color: "#FF5B8F",
-    fontSize: 16,
-    fontWeight: "600",
   },
   content: {
     flex: 1,

@@ -28,7 +28,13 @@ router = APIRouter(prefix="/financial", tags=["financial"])
 # ══════════════════════════════════════════════════════════════════
 
 
-async def _get_aluno_id_do_responsavel(current_user: dict, session: AsyncSession) -> uuid.UUID:
+async def _get_aluno_id_do_responsavel(
+    current_user: dict,
+    session: AsyncSession,
+    aluno_id: uuid.UUID | None = None,
+) -> uuid.UUID:
+    if aluno_id is not None:
+        return aluno_id
     repo = ResponsavelAlunoRepository(session)
     vinculos = await repo.get_by_responsavel(uuid.UUID(current_user["sub"]))
     if not vinculos:
@@ -39,36 +45,39 @@ async def _get_aluno_id_do_responsavel(current_user: dict, session: AsyncSession
 
 @router.get("/me/balance", response_model=SaldoResponse)
 async def meu_saldo(
+    aluno_id: uuid.UUID | None = Query(None),
     current_user: dict = Depends(require_roles(Perfil.RESPONSAVEL)),
     session: AsyncSession = Depends(get_session),
 ) -> SaldoResponse:
     service = FinancialService(session)
-    aluno_id = await _get_aluno_id_do_responsavel(current_user, session)
-    return await service.consultar_saldo(aluno_id)
+    target_aluno = await _get_aluno_id_do_responsavel(current_user, session, aluno_id)
+    return await service.consultar_saldo(target_aluno)
 
 
 @router.get("/me/statement", response_model=ExtratoResponse)
 async def meu_extrato(
+    aluno_id: uuid.UUID | None = Query(None),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     current_user: dict = Depends(require_roles(Perfil.RESPONSAVEL)),
     session: AsyncSession = Depends(get_session),
 ) -> ExtratoResponse:
     service = FinancialService(session)
-    aluno_id = await _get_aluno_id_do_responsavel(current_user, session)
-    return await service.gerar_extrato(aluno_id=aluno_id, page=page, size=size)
+    target_aluno = await _get_aluno_id_do_responsavel(current_user, session, aluno_id)
+    return await service.gerar_extrato(aluno_id=target_aluno, page=page, size=size)
 
 
 @router.post("/me/recharge", response_model=RecargaResponse, status_code=201)
 async def minha_recarga(
     body: RecargaRequest,
+    aluno_id: uuid.UUID | None = Query(None),
     current_user: dict = Depends(require_roles(Perfil.RESPONSAVEL)),
     session: AsyncSession = Depends(get_session),
 ) -> RecargaResponse:
     service = FinancialService(session)
-    aluno_id = await _get_aluno_id_do_responsavel(current_user, session)
+    target_aluno = await _get_aluno_id_do_responsavel(current_user, session, aluno_id)
     return await service.realizar_recarga(
-        aluno_id=aluno_id,
+        aluno_id=target_aluno,
         data=body,
         usuario_id=uuid.UUID(current_user["sub"]),
     )

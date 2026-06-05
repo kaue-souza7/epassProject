@@ -84,3 +84,90 @@ export interface EventDetail {
     destino_id: string;
   }[];
 }
+
+export interface FrequencyReport {
+  matricula_id: string;
+  aluno_nome: string;
+  turma_codigo: string;
+  ano_letivo: number;
+  periodo_inicio: string;
+  periodo_fim: string;
+  total_aulas: number;
+  presencas: number;
+  faltas: number;
+  faltas_justificadas: number;
+  frequencia_media: number;
+}
+
+export interface SchoolHistoryDiscipline {
+  disciplina_nome: string;
+  ano_letivo: number;
+  serie_nome: string;
+  situacao: string;
+  media_final: number | null;
+}
+
+export interface SchoolHistory {
+  aluno_id: string;
+  aluno_nome: string;
+  disciplinas: SchoolHistoryDiscipline[];
+}
+
+export interface EnrollmentCertificate {
+  matricula_id: string;
+  aluno_nome: string;
+  turma_codigo: string;
+  serie_nome: string;
+  ano_letivo: number;
+  data_emissao: string;
+  situacao: string;
+}
+
+export interface PaymentReceipt {
+  movimento_id: string;
+  descricao: string;
+  valor: number;
+  data_pagamento: string;
+  forma_pagamento: string;
+  aluno_nome: string;
+}
+
+export interface BimestreEvolucao {
+  bimestre: number;
+  media_geral: number;
+  frequencia: number | null;
+}
+
+export interface EvolutionData {
+  matricula_id: string;
+  aluno_nome: string;
+  turma_codigo: string;
+  serie_nome: string;
+  ano_letivo: number;
+  bimestres: BimestreEvolucao[];
+}
+
+export interface DocumentPdf {
+  id: string;
+  tipo: string;
+  url: string;
+  nome_arquivo: string;
+}
+
+export type ReportType =
+  | "boletim_anual"
+  | "boletim_bimestral"
+  | "frequencia"
+  | "historico_escolar"
+  | "declaracao_matricula"
+  | "comprovante_pagamento"
+  | "extrato_financeiro"
+  | "evolucao";
+
+export interface ReportItem {
+  id: ReportType;
+  title: string;
+  description: string;
+  icon: string;
+  section: "academic" | "financial" | "performance";
+}

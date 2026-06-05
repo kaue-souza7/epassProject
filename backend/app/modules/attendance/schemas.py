@@ -55,3 +55,16 @@ class ChamadaDetalheResponse(BaseModel):
 class ChamadaComFrequencias(BaseModel):
     chamada: ChamadaResponse
     frequencias: list[FrequenciaResponse]
+
+
+class FrequenciaResumoResponse(BaseModel):
+    matricula_id: uuid.UUID
+    aluno_id: uuid.UUID | None = None
+    aluno_nome: str | None = None
+    turma_codigo: str | None = None
+    frequencia_media: float | None = None
+    total_aulas: int = 0
+    presencas: int = 0
+    faltas: int = 0
+    faltas_justificadas: int = 0
+    situacao_hoje: str | None = None
