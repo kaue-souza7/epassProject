@@ -116,3 +116,13 @@ docker-compose.override.yml
 *.swo
 *~
 .DS_Store
+
+# === Ferramentas de agente ===
+# Config local do opencode (MCP servers). Versionar faria o clone de
+# todo mundo apontar para os mesmos servidores de MCP.
+opencode.json
+
+# Duplicata do logo da Atena (idêntico byte a byte a
+# mobile/assets/images/atena/atena-logo.png, que é o caminho em uso no
+# app). Mantido fora do repositório para não guardar 1,5 MB duas vezes.
+logo-ia.png
