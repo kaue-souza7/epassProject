@@ -4,8 +4,10 @@ from enum import StrEnum
 class Perfil(StrEnum):
     ADMIN = "admin"
     SECRETARIA = "secretaria"
+    COORDENADOR = "coordenador"
     PROFESSOR = "professor"
     RESPONSAVEL = "responsavel"
+    CANTINEIRO = "cantineiro"
 
 
 class StatusMatricula(StrEnum):
@@ -100,6 +102,27 @@ class TipoAviso(StrEnum):
     COMPORTAMENTO = "comportamento"
     SAUDE = "saude"
     ADMINISTRATIVO = "administrativo"
+    # Aviso gerado pelo botão "não vir hoje" do responsável. É um tipo próprio
+    # porque tem regra de destinatário diferente dos demais: secretaria +
+    # professores da turma no dia, e não o público escolhido no compositor.
+    AUSENCIA = "ausencia"
+
+
+class OrdemAviso(StrEnum):
+    """Critérios aceitos de ordenação da listagem de avisos."""
+
+    RECENTES = "recentes"
+    ANTIGOS = "antigos"
+    PRIORIDADE = "prioridade"
+    LIDOS = "lidos"
+
+
+class LeituraAviso(StrEnum):
+    """Recorte de leitura do usuário corrente sobre a listagem."""
+
+    TODOS = "todos"
+    NAO_LIDOS = "nao_lidos"
+    LIDOS = "lidos"
 
 
 class StatusJustificativa(StrEnum):
@@ -166,3 +189,108 @@ class TipoMovimentacao(StrEnum):
     RECARGA = "recarga"
     CONSUMO = "consumo"
     ESTORNO = "estorno"
+
+
+class StatusPedido(StrEnum):
+    PENDENTE = "pendente"
+    APROVADO = "aprovado"
+    EM_PRODUCAO = "em_producao"
+    PRONTO = "pronto"
+    RETIRADO = "retirado"
+    CANCELADO = "cancelado"
+
+
+class OrigemPedido(StrEnum):
+    RESPONSAVEL = "responsavel"
+    PROGRAMACAO = "programacao"
+    CONSUMO_DIRETO = "consumo_direto"
+
+
+class TipoProgramacao(StrEnum):
+    DIARIA = "diaria"
+    GERAL = "geral"
+
+
+class StatusProduto(StrEnum):
+    ATIVO = "ativo"
+    INATIVO = "inativo"
+
+
+class CategoriaProduto(StrEnum):
+    SALGADO = "SALGADO"
+    LANCHE_QUENTE = "LANCHE_QUENTE"
+    LANCHE_NATURAL = "LANCHE_NATURAL"
+    DOCE = "DOCE"
+    BOMBONIERE = "BOMBONIERE"
+
+
+class TipoMovimentacaoEstoque(StrEnum):
+    ENTRADA = "entrada"
+    SAIDA = "saida"
+    AJUSTE = "ajuste"
+
+
+class TipoOcorrencia(StrEnum):
+    COMPORTAMENTO = "comportamento"
+    SAUDE = "saude"
+    ACADEMICO = "academico"
+    OUTRO = "outro"
+
+
+class StatusOcorrencia(StrEnum):
+    ABERTA = "aberta"
+    EM_ANDAMENTO = "em_andamento"
+    RESOLVIDA = "resolvida"
+    ARQUIVADA = "arquivada"
+
+
+class SeveridadeOcorrencia(StrEnum):
+    BAIXA = "baixa"
+    MEDIA = "media"
+    ALTA = "alta"
+
+
+class StatusAviso(StrEnum):
+    PUBLICADO = "publicado"
+    ARQUIVADO = "arquivado"
+
+
+class TipoNotificacao(StrEnum):
+    SISTEMA = "sistema"
+    CANTINA = "cantina"
+    BOLETIM = "boletim"
+    OCORRENCIA = "ocorrencia"
+    AVISO = "aviso"
+    AGENDA = "agenda"
+    FINANCEIRO = "financeiro"
+    NOTA = "nota"
+    FREQUENCIA = "frequencia"
+
+
+class PapelMensagemIA(StrEnum):
+    """Quem falou na conversa da Atena."""
+
+    USUARIO = "usuario"
+    ASSISTENTE = "assistente"
+
+
+class TipoDocumento(StrEnum):
+    """Documentos que um responsável pode solicitar à secretaria."""
+
+    BOLETIM_BIMESTRAL = "boletim_bimestral"
+    BOLETIM_ANUAL = "boletim_anual"
+    HISTORICO_ESCOLAR = "historico_escolar"
+    DECLARACAO_MATRICULA = "declaracao_matricula"
+    COMPROVANTE_MATRICULA = "comprovante_matricula"
+    COMPROVANTE_FREQUENCIA = "comprovante_frequencia"
+    COMPROVANTE_ENDERECO = "comprovante_endereco"
+    COMPROVANTE_RENDA = "comprovante_renda"
+    OUTRO = "outro"
+
+
+class StatusSolicitacaoDocumento(StrEnum):
+    PENDENTE = "pendente"
+    EM_ANALISE = "em_analise"
+    CONCLUIDA = "concluida"
+    RECUSADA = "recusada"
+    CANCELADA = "cancelada"

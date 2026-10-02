@@ -111,3 +111,7 @@ class AuthService:
             raise InvalidTokenError("Sessão já revogada")
 
         await self.revoke_session(sessao)
+
+    async def revogar_sessoes_do_usuario(self, usuario_id: uuid.UUID) -> int:
+        """Invalida todas as sessões ativas (usado após troca de senha)."""
+        return await self._repo.revogar_ativas_do_usuario(usuario_id)

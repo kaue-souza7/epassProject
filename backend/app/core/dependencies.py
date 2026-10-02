@@ -22,6 +22,28 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
     if payload.get("type") != "access":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Tipo de token inválido")
+
+    # O token pode ser válido e ainda assim apontar para um usuário removido ou
+    # inativo (token obsoleto). Sem esta checagem, inserts com `criado_por`/FK
+    # caíam em IntegrityError → 500 genérico. Aqui a falha vira 401 explícito,
+    # forçando o cliente a renovar a sessão.
+    import uuid as _uuid
+
+    from app.modules.users.repository import UsuarioRepository
+
+    try:
+        usuario_id = _uuid.UUID(str(payload.get("sub")))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+
+    usuario = await UsuarioRepository(session).get_by_id(usuario_id)
+    if usuario is None or not usuario.ativo:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sessão inválida. Faça login novamente.",
+        )
+
+    payload["nome"] = usuario.nome
     return payload
 
 

@@ -1,9 +1,30 @@
 from typing import Literal
 
-Perfil = Literal["admin", "secretaria", "professor", "responsavel"]
+Perfil = Literal["admin", "secretaria", "coordenador", "professor", "responsavel", "cantineiro"]
 
 REGISTRY: dict[Perfil, list[tuple[str, str, str]]] = {
     "admin": [("*", "*", "*")],
+    "coordenador": [
+        ("ocorrencia", "create", "all"),
+        ("ocorrencia", "read", "all"),
+        ("ocorrencia", "update", "all"),
+        ("ocorrencia", "status", "all"),
+        ("aviso", "create", "all"),
+        ("aviso", "read", "all"),
+        ("aviso", "update", "all"),
+        ("aviso", "read_leitura", "all"),
+        ("aviso", "escalonamento", "all"),
+        ("aluno", "read", "all"),
+        ("turma", "read", "all"),
+        ("professor", "read", "all"),
+        ("nota", "read", "all"),
+        ("frequencia", "read", "all"),
+        ("relatorio", "read", "pedagogico_own"),
+        ("financeiro", "read", "all"),
+        ("notificacao", "read", "all"),
+        ("usuario", "read", "self"),
+        ("usuario", "update", "self"),
+    ],
     "secretaria": [
         ("aluno", "create", "all"),
         ("aluno", "read", "all"),
@@ -44,9 +65,13 @@ REGISTRY: dict[Perfil, list[tuple[str, str, str]]] = {
         ("nota", "read", "own"),
         ("nota", "update", "own"),
         ("comunicado", "create", "own_turma"),
+        ("ocorrencia", "create", "own"),
+        ("ocorrencia", "read", "own"),
+        ("aviso", "read", "own_turma"),
         ("relatorio", "read", "pedagogico_own"),
         ("turma", "read", "own"),
         ("disciplina", "read", "own"),
+        ("notificacao", "read", "self"),
     ],
     "responsavel": [
         ("aluno", "read", "own"),
@@ -59,8 +84,19 @@ REGISTRY: dict[Perfil, list[tuple[str, str, str]]] = {
         ("documento", "create", "own"),
         ("documento", "read", "own"),
         ("relatorio", "read", "own_alunos"),
+        ("ocorrencia", "read", "own_alunos"),
+        ("aviso", "read", "own"),
+        ("aviso", "ler", "own"),
+        ("notificacao", "read", "self"),
         ("usuario", "read", "self"),
         ("usuario", "update", "self"),
+    ],
+    "cantineiro": [
+        ("cantina", "read", "all"),
+        ("cantina", "stock", "all"),
+        ("cantina", "orders", "all"),
+        ("aluno", "read", "cantina"),
+        ("financeiro", "read_wallet", "cantina"),
     ],
 }
 

@@ -30,6 +30,19 @@ from app.modules.academic_config.models import ConfiguracaoAcademica  # noqa: F4
 from app.modules.agenda.models import Evento, EventoDestinatario  # noqa: F401
 from app.modules.financial.models import Wallet, Movimentacao  # noqa: F401
 from app.modules.bracelets.models import Bracelet  # noqa: F401
+from app.modules.cantina.models import Produto, Pedido, ItemPedido, MovimentacaoEstoque, CantinaConfig  # noqa: F401
+from app.modules.cantina.programacao_models import ProgramacaoCantina, ProgramacaoItem  # noqa: F401
+from app.modules.ai.history_models import Conversa, Mensagem  # noqa: F401
+from app.modules.communication.models import (  # noqa: F401
+    Aviso,
+    AvisoDestinatario,
+    AvisoMensagem,
+    Notificacao,
+    Ocorrencia,
+    OcorrenciaHistorico,
+    PushTicket,
+    PushToken,
+)
 
 
 config = context.config

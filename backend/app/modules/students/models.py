@@ -23,6 +23,7 @@ class Aluno(Base):
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     data_entrada: Mapped[date] = mapped_column(Date, nullable=False)
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    autonomia_cantina: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False,
     )

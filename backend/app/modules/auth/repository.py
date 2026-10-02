@@ -40,3 +40,19 @@ class SessaoRepository:
             select(Sessao).where(Sessao.expires_at < datetime.now(UTC))
         )
         return list(result.scalars().all())
+
+    async def revogar_ativas_do_usuario(self, usuario_id: uuid.UUID) -> int:
+        """Revoga todas as sessões ativas. Usado após troca de senha."""
+        result = await self._session.execute(
+            select(Sessao).where(
+                Sessao.usuario_id == usuario_id,
+                Sessao.revoked_at.is_(None),
+            )
+        )
+        sessoes = list(result.scalars().all())
+        agora = datetime.now(UTC)
+        for sessao in sessoes:
+            sessao.revoked_at = agora
+            self._session.add(sessao)
+        await self._session.flush()
+        return len(sessoes)

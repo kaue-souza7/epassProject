@@ -30,3 +30,13 @@ class MeResponse(BaseModel):
     email: str
     perfil: Perfil
     ativo: bool
+
+
+class UpdateMeRequest(BaseModel):
+    nome: str | None = None
+    email: str | None = None
+
+
+class ChangePasswordRequest(BaseModel):
+    senha_atual: str
+    nova_senha: str
