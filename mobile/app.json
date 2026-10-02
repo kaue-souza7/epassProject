@@ -2,15 +2,11 @@
   "expo": {
     "name": "ePass",
     "slug": "epass",
+    "scheme": "epass",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FF5B8F"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -23,7 +19,13 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FF5B8F"
       },
-      "package": "app.epass.mobile"
+      "package": "app.epass.mobile",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -33,7 +35,30 @@
       "expo-local-authentication",
       "expo-asset",
       "expo-font",
-      "expo-web-browser"
-    ]
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O ePass precisa acessar a câmera para corrigir gabaritos."
+        }
+      ],
+      "expo-sharing",
+      "expo-status-bar",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#FF5B8F",
+          "defaultChannel": "avisos",
+          "sounds": []
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c903708c-54e1-4ec9-9c5b-04297ff600c5"
+      }
+    },
+    "owner": "epass"
   }
 }

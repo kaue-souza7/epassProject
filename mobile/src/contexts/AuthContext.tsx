@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import axios from "axios";
 import { api, setTokens, clearTokens, getStoredAccessToken, setOnForcedLogout } from "../api/client";
 import * as SecureStore from "../services/storage";
+import { desregistrarPushToken } from "../services/pushNotifications";
 import type { User } from "../types";
 
 interface AuthContextType {
@@ -10,6 +11,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<User | null>;
+  applyUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -60,6 +63,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   }, []);
 
+  const applyUser = useCallback((nextUser: User) => {
+    setUser(nextUser);
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const { data } = await api.get<User>("/auth/me");
+      setUser(data);
+      return data;
+    } catch (err) {
+      if (axios.isCancel(err)) return null;
+      throw err;
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       const refreshToken = await SecureStore.getItemAsync("epass_refresh_token");
@@ -68,13 +86,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch {
     } finally {
+      // Remove o token de push do backend antes de limpar a sessão.
+      await desregistrarPushToken();
       await clearTokens();
       setUser(null);
     }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        logout,
+        refreshUser,
+        applyUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

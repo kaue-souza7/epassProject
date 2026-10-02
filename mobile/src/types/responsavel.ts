@@ -56,7 +56,7 @@ export interface ReportCardAnnual {
   serie_nome: string;
   ano_letivo: number;
   bimestres: ReportCard[];
-  situacao_final: SituacaoAluno;
+  situacao_final: SituacaoAluno | null;
   media_pre_recuperacao: number | null;
   media_pos_recuperacao: number | null;
 }

@@ -1,5 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { createThemedStyles } from "../theme/useThemedStyles";
+import { ThemedIcon } from "../theme/ThemedIcon";
 
 interface ErrorStateProps {
   message: string;
@@ -16,7 +18,7 @@ export function ErrorState({
 }: ErrorStateProps) {
   return (
     <View style={styles.container}>
-      <Ionicons name={icon} size={56} color="#FF5B8F" />
+      <ThemedIcon name={icon} size={56} color="#FF5B8F" />
       <Text style={styles.message}>{message}</Text>
       {onRetry && (
         <TouchableOpacity
@@ -32,7 +34,7 @@ export function ErrorState({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     justifyContent: "center",

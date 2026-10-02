@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
+import { getApiErrorMessage } from "../api/errors";
 
 interface UseApiState<T> {
   data: T | null;
@@ -45,8 +46,7 @@ export function useApi<T>(
         }
       } catch (err) {
         if (!mountedRef.current || axios.isCancel(err)) return;
-        const message =
-          err instanceof Error ? err.message : errorMessage;
+        const message = getApiErrorMessage(err, errorMessage);
         if (mountedRef.current) {
           setState((prev) => ({ ...prev, loading: false, error: message }));
         }

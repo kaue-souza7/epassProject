@@ -2,7 +2,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { ResponsavelStack } from "./ResponsavelStack";
 import { ProfessorStack } from "./ProfessorStack";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { createThemedStyles } from "../theme/useThemedStyles";
+import { ThemedIcon } from "../theme/ThemedIcon";
 
 function UnauthorizedScreen() {
   const { logout } = useAuth();
@@ -10,7 +11,7 @@ function UnauthorizedScreen() {
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconCircle}>
-          <Ionicons name="shield-checkmark-outline" size={48} color="#FF5B8F" />
+          <ThemedIcon name="shield-checkmark-outline" size={48} color="#FF5B8F" />
         </View>
         <Text style={styles.title}>Acesso não autorizado</Text>
         <Text style={styles.subtitle}>
@@ -43,7 +44,7 @@ export function ProfileRouter() {
   }
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",
