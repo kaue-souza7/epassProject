@@ -1,0 +1,392 @@
+/*
+ * Branched Menu — conceito do React Bits adaptado à identidade visual do ePass.
+ *
+ * A paleta vem das mesmas famílias já usadas no projeto (gray-200/700 para a
+ * tinta e o trilho, primary-500/400 para o acento) em vez das cores neutras do
+ * original, para que o menu acompanhe o tema claro/escuro sem introduzir
+ * matizes novos.
+ */
+
+.bm {
+  --bm-w: 240px;
+  --bm-ink: #374151; /* gray-700 */
+  --bm-accent: #ff5b8f; /* primary-500 */
+  --bm-line: #e5e7eb; /* gray-200 */
+  --bm-danger: #e74c3c;
+  --bm-font: var(--bm-font-base, 14px);
+  --bm-row: var(--bm-row-base, 36px);
+  --bm-indent: 40px;
+  --bm-line-w: 1.5;
+  --bm-draw: 400ms;
+  --bm-fold: 300ms;
+  --bm-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --bm-muted: color-mix(in srgb, var(--bm-ink) 58%, transparent);
+  --bm-hover: color-mix(in srgb, var(--bm-ink) 6%, transparent);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: fit-content;
+  max-width: min(var(--bm-w), 100%);
+  min-width: 0;
+  padding-left: 14px;
+  color: var(--bm-ink);
+  font-family: inherit;
+  font-size: var(--bm-font);
+  line-height: 1.25;
+}
+
+/* Trilho vertical que dá suporte a todas as ramificações. */
+.bm::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: linear-gradient(
+    to bottom,
+    var(--bm-line) 0%,
+    var(--bm-line) 55%,
+    transparent 100%
+  );
+}
+
+/* Marcador que desliza pelo trilho até a linha ativa. */
+.bm__marker {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  z-index: 1;
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: var(--bm-accent);
+  opacity: 0;
+  transition:
+    top 220ms var(--bm-ease-out),
+    opacity 150ms ease;
+}
+
+.bm__marker[data-on] {
+  opacity: 1;
+}
+
+.bm__section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------- heads --- */
+
+.bm__head,
+.bm__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: none;
+  color: var(--bm-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+  min-width: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 200ms ease,
+    background-color 160ms ease;
+}
+
+.bm__head {
+  min-height: var(--bm-row);
+  padding: 7px 4px 7px 2px;
+  border-radius: 8px;
+  font-size: calc(var(--bm-font) + 1px);
+  font-weight: 500;
+}
+
+.bm__section[data-open] > .bm__head,
+.bm__head[data-active] {
+  color: var(--bm-ink);
+}
+
+.bm__head[data-active] {
+  font-weight: 600;
+}
+
+.bm__head:focus-visible,
+.bm__item:focus-visible {
+  outline: 2px solid var(--bm-accent);
+  outline-offset: 1px;
+}
+
+/* --------------------------------------------------------------- items --- */
+
+.bm__item {
+  min-height: var(--bm-row);
+  padding: 4px 4px 4px var(--bm-indent);
+  border-radius: 8px;
+}
+
+.bm__item[data-active] {
+  color: var(--bm-accent);
+  font-weight: 500;
+}
+
+.bm__item[data-tone="danger"] {
+  color: var(--bm-danger);
+}
+
+.bm__item[data-tone="danger"][data-active] {
+  color: var(--bm-danger);
+}
+
+.bm__item[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------- body --- */
+
+.bm__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--bm-fold) var(--bm-ease-out);
+}
+
+.bm__section[data-open] > .bm__body {
+  grid-template-rows: 1fr;
+}
+
+.bm__fold {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.bm__tree {
+  position: relative;
+  padding: 6px 0;
+  box-sizing: border-box;
+}
+
+.bm__lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.bm__section[data-open] .bm__lines {
+  opacity: 1;
+  transition: opacity 250ms ease 100ms;
+}
+
+.bm__base,
+.bm__reach {
+  fill: none;
+  stroke-width: var(--bm-line-w);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bm__base {
+  stroke: var(--bm-line);
+}
+
+.bm__reach {
+  stroke: var(--bm-accent);
+  transition: stroke-dashoffset var(--bm-draw) var(--bm-ease-out);
+}
+
+/* --------------------------------------------------------------- parts --- */
+
+.bm__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bm__icon--head {
+  width: 1.15em;
+  height: 1.15em;
+}
+
+.bm__icon--item {
+  width: 1em;
+  height: 1em;
+}
+
+.bm__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.bm__label,
+.bm__hint {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bm__hint {
+  font-size: calc(var(--bm-font) - 2px);
+  font-weight: 400;
+  opacity: 0.8;
+  margin-top: 1px;
+}
+
+.bm__item[data-active] .bm__hint {
+  opacity: 0.9;
+}
+
+.bm__trailing {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Slot fixo para que rótulos de folha e de seção fiquem na mesma coluna. */
+.bm__chev {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bm__chev svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  transition: transform var(--bm-fold) var(--bm-ease-out);
+}
+
+.bm__section[data-open] > .bm__head .bm__chev svg {
+  transform: rotate(0deg);
+}
+
+/* -------------------------------------------- linhas para conteúdo rico --- */
+/* Usadas por `renderItem` quando o item precisa de mais de uma linha. */
+
+.bm__stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  gap: 1px;
+}
+
+.bm__title {
+  display: block;
+  min-width: 0;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bm__desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: calc(var(--bm-font) - 2px);
+  line-height: 1.35;
+  opacity: 0.8;
+  overflow-wrap: anywhere;
+}
+
+.bm__meta {
+  flex: none;
+  font-size: calc(var(--bm-font) - 3px);
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------- interaction --- */
+
+@media (hover: hover) and (pointer: fine) {
+  .bm__head:hover,
+  .bm__item:hover {
+    color: var(--bm-ink);
+    background: var(--bm-hover);
+  }
+
+  .bm__item[data-active]:hover {
+    color: var(--bm-accent);
+  }
+
+  .bm__item[data-tone="danger"]:hover {
+    color: var(--bm-danger);
+  }
+}
+
+/* --------------------------------------------------------------- theme --- */
+
+.dark .bm {
+  --bm-ink: #e5e7eb; /* gray-200 */
+  --bm-accent: #ff6794; /* primary-400 */
+  --bm-line: #374151; /* gray-700 */
+  --bm-danger: #ff6b5e;
+}
+
+/* --------------------------------------------------------------- touch --- */
+
+@media (pointer: coarse) {
+  /* max() eleva o alvo de toque, mas nunca reduz um menu que pediu linhas
+     mais altas (ex.: a Central de Notificações usa 56px). */
+  .bm {
+    --bm-font: max(var(--bm-font-base, 14px), 15px);
+    --bm-row: max(var(--bm-row-base, 36px), 44px);
+  }
+}
+
+/* Telas estreitas: rótulos podem quebrar em duas linhas em vez de gerar
+   overflow horizontal dentro do painel. */
+@media (max-width: 480px) {
+  .bm {
+    --bm-indent: 32px;
+  }
+
+  .bm__label {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ------------------------------------------------------- reduced motion --- */
+
+@media (prefers-reduced-motion: reduce) {
+  .bm__marker {
+    transition: opacity 150ms ease;
+  }
+
+  .bm__body,
+  .bm__chev svg,
+  .bm__head,
+  .bm__item {
+    transition: none;
+  }
+
+  .bm__reach {
+    transition: none;
+  }
+}

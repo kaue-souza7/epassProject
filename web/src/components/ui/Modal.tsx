@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { X } from "lucide-react";
+import { MotionModal, MotionModalBody, MotionModalHeader } from "../motion/MotionModal";
 
 interface ModalProps {
   open: boolean;
@@ -10,7 +10,7 @@ interface ModalProps {
 }
 
 export function Modal({ open, title, onClose, children, size = "md" }: ModalProps) {
-  if (!open) return null;
+  const titleId = `modal-title-${size}`;
 
   const width = {
     sm: "max-w-sm",
@@ -19,19 +19,9 @@ export function Modal({ open, title, onClose, children, size = "md" }: ModalProp
   }[size];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className={`relative bg-card dark:bg-card-dark rounded-2xl shadow-xl w-full ${width} mx-4 border border-gray-200 dark:border-gray-700 max-h-[85vh] flex flex-col`}>
-        <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="p-6 pt-4 overflow-y-auto">
-          {children}
-        </div>
-      </div>
-    </div>
+    <MotionModal open={open} onClose={onClose} labelledBy={titleId} panelClassName={width}>
+      <MotionModalHeader title={title} titleId={titleId} onClose={onClose} />
+      <MotionModalBody>{children}</MotionModalBody>
+    </MotionModal>
   );
 }

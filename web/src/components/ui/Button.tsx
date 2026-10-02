@@ -1,5 +1,6 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from "react";
 import { clsx } from "clsx";
+import { motion, useReducedMotion } from "framer-motion";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
@@ -17,10 +18,15 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
+  const reduceMotion = useReducedMotion();
+  const isDisabled = disabled || loading;
+
   return (
-    <button
+    <motion.button
       className={clsx(
-        "inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
+        "relative inline-flex items-center justify-center font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none overflow-hidden",
+        "transition-colors duration-200 ease-epass active:shadow-epass-sm",
+        !isDisabled && !reduceMotion && "hover:shadow-epass-md",
         {
           "bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500": variant === "primary",
           "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600": variant === "secondary",
@@ -35,17 +41,55 @@ export function Button({
         },
         className,
       )}
-      disabled={disabled || loading}
+      disabled={isDisabled}
       aria-busy={loading || undefined}
-      {...props}
+      whileHover={isDisabled || reduceMotion ? undefined : { y: -1 }}
+      whileTap={isDisabled || reduceMotion ? undefined : { scale: 0.96, y: 0 }}
+      transition={{ type: "spring", stiffness: 500, damping: 28 }}
+      {...(props as ComponentProps<typeof motion.button>)}
     >
-      {loading && (
-        <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      <motion.span
+        className="absolute inset-0 bg-white/20"
+        style={{ transformOrigin: "left" }}
+        initial={{ scaleX: 0 }}
+        whileHover={isDisabled || reduceMotion ? undefined : { scaleX: 1 }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        aria-hidden="true"
+      />
+      <motion.span
+        className="absolute inset-0 flex items-center justify-center"
+        animate={{ opacity: loading ? 1 : 0, scale: loading ? 1 : 0.6 }}
+        transition={{ duration: 0.2 }}
+        aria-hidden="true"
+      >
+        <svg
+          className="animate-spin h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
         </svg>
-      )}
-      {children}
-    </button>
+      </motion.span>
+      <motion.span
+        className="inline-flex items-center"
+        animate={{ opacity: loading ? 0 : 1 }}
+        transition={{ duration: 0.2 }}
+        aria-hidden={loading || undefined}
+      >
+        {children}
+      </motion.span>
+    </motion.button>
   );
 }
