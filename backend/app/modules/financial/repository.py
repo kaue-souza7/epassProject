@@ -96,6 +96,12 @@ class MovimentacaoRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_by_id_for_update(self, id: uuid.UUID) -> Movimentacao | None:
+        result = await self._session.execute(
+            select(Movimentacao).where(Movimentacao.id == id).with_for_update(),
+        )
+        return result.scalar_one_or_none()
+
     async def get_by_wallet_paginated(
         self,
         wallet_id: uuid.UUID,
@@ -118,13 +124,18 @@ class MovimentacaoRepository:
         items = list(result.scalars().all())
         return items, total
 
-    async def get_consumo_estornado(self, consumo_id: uuid.UUID) -> Movimentacao | None:
+    async def get_by_idempotency_key(self, key: str) -> Movimentacao | None:
+        result = await self._session.execute(
+            select(Movimentacao).where(Movimentacao.idempotency_key == key).limit(1),
+        )
+        return result.scalar_one_or_none()
+
+    async def get_estorno_by_consumo_id(self, consumo_id: uuid.UUID) -> Movimentacao | None:
         result = await self._session.execute(
             select(Movimentacao).where(
                 Movimentacao.tipo == TipoMovimentacao.ESTORNO,
-                # Para MVP simples, estorno registrado com descricao contendo o ID
-                # Em versão futura, adicionar coluna estorno_id
-            ).order_by(desc(Movimentacao.created_at)).limit(1),
+                Movimentacao.consumo_original_id == consumo_id,
+            ).limit(1),
         )
         return result.scalar_one_or_none()
 

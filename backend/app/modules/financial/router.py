@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, require_roles
+from app.core.exceptions import Forbidden, NotFound
 from app.database import get_session
 from app.modules.financial.schemas import (
     ConsumoRequest,
@@ -33,12 +34,17 @@ async def _get_aluno_id_do_responsavel(
     session: AsyncSession,
     aluno_id: uuid.UUID | None = None,
 ) -> uuid.UUID:
-    if aluno_id is not None:
-        return aluno_id
+    responsavel_id = uuid.UUID(current_user["sub"])
     repo = ResponsavelAlunoRepository(session)
-    vinculos = await repo.get_by_responsavel(uuid.UUID(current_user["sub"]))
+
+    if aluno_id is not None:
+        vinculo = await repo.get_by_aluno_and_responsavel(aluno_id, responsavel_id)
+        if vinculo is None:
+            raise Forbidden("Você não possui acesso a este aluno")
+        return aluno_id
+
+    vinculos = await repo.get_by_responsavel(responsavel_id)
     if not vinculos:
-        from app.core.exceptions import NotFound
         raise NotFound("Nenhum aluno vinculado a este responsável")
     return vinculos[0].aluno_id
 
@@ -75,7 +81,10 @@ async def minha_recarga(
     session: AsyncSession = Depends(get_session),
 ) -> RecargaResponse:
     service = FinancialService(session)
-    target_aluno = await _get_aluno_id_do_responsavel(current_user, session, aluno_id)
+    # Aceita o aluno no query param ou no corpo, sempre validando o vínculo.
+    target_aluno = await _get_aluno_id_do_responsavel(
+        current_user, session, aluno_id or body.aluno_id,
+    )
     return await service.realizar_recarga(
         aluno_id=target_aluno,
         data=body,
@@ -154,6 +163,10 @@ async def get_wallet(
 ) -> WalletDetailResponse:
     service = FinancialService(session)
     wallet = await service.get_wallet_by_id(id)
+    return _wallet_detail(wallet)
+
+
+def _wallet_detail(wallet) -> WalletDetailResponse:
     return WalletDetailResponse(
         id=wallet.id,
         aluno_id=wallet.aluno_id,
@@ -163,3 +176,25 @@ async def get_wallet(
         updated_at=wallet.updated_at,
         aluno_nome=wallet.aluno.nome if wallet.aluno else None,
     )
+
+
+@router.patch("/wallets/{id}/block", response_model=WalletDetailResponse)
+async def bloquear_wallet(
+    id: uuid.UUID,
+    current_user: dict = Depends(require_roles(Perfil.ADMIN)),
+    session: AsyncSession = Depends(get_session),
+) -> WalletDetailResponse:
+    service = FinancialService(session)
+    wallet = await service.bloquear_wallet(id)
+    return _wallet_detail(wallet)
+
+
+@router.patch("/wallets/{id}/unblock", response_model=WalletDetailResponse)
+async def desbloquear_wallet(
+    id: uuid.UUID,
+    current_user: dict = Depends(require_roles(Perfil.ADMIN)),
+    session: AsyncSession = Depends(get_session),
+) -> WalletDetailResponse:
+    service = FinancialService(session)
+    wallet = await service.desbloquear_wallet(id)
+    return _wallet_detail(wallet)

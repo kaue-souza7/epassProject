@@ -4,7 +4,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import require_roles
+from app.core.dependencies import get_current_user, require_roles
 from app.database import get_session
 from app.modules.reports.schemas import (
     BoletimAnual,
@@ -23,6 +23,39 @@ from app.shared.enums import Perfil
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
+async def _verificar_acesso_boletim(
+    current_user: dict,
+    session: AsyncSession,
+    enrollment_id: uuid.UUID,
+) -> None:
+    from app.core.exceptions import Forbidden, NotFound
+    from app.modules.allocations.repository import AlocacaoRepository
+    from app.modules.enrollments.repository import MatriculaRepository
+    from app.modules.students.repository import ResponsavelAlunoRepository
+
+    perfil = current_user.get("perfil")
+    matricula = await MatriculaRepository(session).get_by_id(enrollment_id)
+    if matricula is None:
+        raise NotFound("Matrícula não encontrada")
+
+    if perfil == Perfil.RESPONSAVEL:
+        vinculo = await ResponsavelAlunoRepository(session).get_by_aluno_and_responsavel(
+            matricula.aluno_id,
+            uuid.UUID(current_user["sub"]),
+        )
+        if vinculo is None:
+            raise Forbidden("Você não possui acesso a esta matrícula")
+    elif perfil == Perfil.PROFESSOR:
+        alocacoes, _ = await AlocacaoRepository(session).search(
+            professor_id=uuid.UUID(current_user["sub"]),
+            turma_id=matricula.turma_id,
+            only_active=True,
+            size=100,
+        )
+        if not alocacoes:
+            raise Forbidden("Você não leciona nesta turma")
+
+
 @router.get(
     "/report-card/{enrollment_id}",
     response_model=BoletimBimestral,
@@ -33,10 +66,13 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 async def boletim_bimestral(
     enrollment_id: uuid.UUID,
     bimestre: int = Query(..., ge=1, le=4),
+    current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> BoletimBimestral:
+    await _verificar_acesso_boletim(current_user, session, enrollment_id)
     service = BoletimService(session)
-    return await service.gerar_boletim_bimestral(enrollment_id, bimestre)
+    is_responsavel = current_user.get("perfil") == Perfil.RESPONSAVEL
+    return await service.gerar_boletim_bimestral(enrollment_id, bimestre, is_responsavel)
 
 
 @router.get(
@@ -47,10 +83,14 @@ async def boletim_bimestral(
     ))],
 )
 async def boletim_anual(
-    enrollment_id: uuid.UUID, session: AsyncSession = Depends(get_session),
+    enrollment_id: uuid.UUID,
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> BoletimAnual:
+    await _verificar_acesso_boletim(current_user, session, enrollment_id)
     service = BoletimService(session)
-    return await service.gerar_boletim_anual(enrollment_id)
+    is_responsavel = current_user.get("perfil") == Perfil.RESPONSAVEL
+    return await service.gerar_boletim_anual(enrollment_id, is_responsavel)
 
 
 @router.get(

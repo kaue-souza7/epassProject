@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFound
 from app.modules.academic_config.service import ConfiguracaoAcademicaService
+from app.modules.boletim.repository import LiberacaoBoletimRepository
 from app.modules.reports.schemas import (
     BoletimAnual,
     BoletimBimestral,
@@ -27,6 +28,7 @@ class BoletimService:
         self._nota_repo = NotaRepository(session)
         self._chamada_repo = ChamadaRepository(session)
         self._freq_repo = FrequenciaRepository(session)
+        self._liberacao_repo = LiberacaoBoletimRepository(session)
 
         self._config_service = ConfiguracaoAcademicaService(session)
 
@@ -56,7 +58,7 @@ class BoletimService:
         return self._config_cache[key]
 
     async def gerar_boletim_bimestral(
-        self, matricula_id, bimestre: int,
+        self, matricula_id, bimestre: int, is_responsavel: bool = False,
     ) -> BoletimBimestral:
         matricula = await self._get_matricula(matricula_id)
         if matricula is None:
@@ -67,6 +69,13 @@ class BoletimService:
 
         disciplinas = []
         for aloc in alocacoes:
+            if is_responsavel:
+                liberada = await self._liberacao_repo.is_alocacao_liberada(
+                    aloc.id, bimestre,
+                )
+                if not liberada:
+                    continue
+
             media = await self._calcular_media(matricula_id, aloc.id, bimestre)
             frequencia = await self._calcular_frequencia(matricula_id, aloc.id, bimestre, turma.ano_letivo.ano)
 
@@ -87,7 +96,7 @@ class BoletimService:
             disciplinas=disciplinas,
         )
 
-    async def gerar_boletim_anual(self, matricula_id) -> BoletimAnual:
+    async def gerar_boletim_anual(self, matricula_id, is_responsavel: bool = False) -> BoletimAnual:
         matricula = await self._get_matricula(matricula_id)
         if matricula is None:
             raise NotFound("Matrícula não encontrada")
@@ -101,13 +110,36 @@ class BoletimService:
 
         bimestres = []
         for b in range(1, 5):
-            boletim = await self.gerar_boletim_bimestral(matricula_id, b)
+            boletim = await self.gerar_boletim_bimestral(matricula_id, b, is_responsavel)
             for disc in boletim.disciplinas:
                 disc_key = str(disc.disciplina_id)
                 if disc_key in recovery_map:
                     disc.nota_recuperacao = recovery_map[disc_key]
                     disc.media_pos_recuperacao = recovery_map[disc_key]
             bimestres.append(boletim)
+
+        if is_responsavel:
+            todas_liberadas = True
+            for aloc in alocacoes:
+                for b in range(1, 5):
+                    if not await self._liberacao_repo.is_alocacao_liberada(aloc.id, b):
+                        todas_liberadas = False
+                        break
+                if not todas_liberadas:
+                    break
+            if not todas_liberadas:
+                primeiro = bimestres[0]
+                return BoletimAnual(
+                    matricula_id=primeiro.matricula_id,
+                    aluno_nome=primeiro.aluno_nome,
+                    turma_codigo=primeiro.turma_codigo,
+                    serie_nome=primeiro.serie_nome,
+                    ano_letivo=primeiro.ano_letivo,
+                    bimestres=bimestres,
+                    situacao_final=None,
+                    media_pre_recuperacao=None,
+                    media_pos_recuperacao=None,
+                )
 
         situacao, media_pre, media_pos, _ = await self._calcular_situacao_final(matricula_id)
 

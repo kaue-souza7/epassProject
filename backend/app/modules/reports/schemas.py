@@ -35,7 +35,7 @@ class BoletimAnual(BaseModel):
     serie_nome: str
     ano_letivo: int
     bimestres: list[BoletimBimestral]
-    situacao_final: SituacaoAluno
+    situacao_final: SituacaoAluno | None = Field(default=None)
     media_pre_recuperacao: Decimal | None = Field(default=None, decimal_places=2)
     media_pos_recuperacao: Decimal | None = Field(default=None, decimal_places=2)
 

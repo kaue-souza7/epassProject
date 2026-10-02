@@ -4,7 +4,17 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, DateTime, Enum as SAEnum, ForeignKey, Numeric, String, Uuid
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Enum as SAEnum,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Uuid,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -46,6 +56,23 @@ class Movimentacao(Base):
 
     __table_args__ = (
         CheckConstraint("valor > 0", name="ck_movimentacao_valor"),
+        # Garante idempotência do estorno: no máximo um ESTORNO por consumo.
+        Index(
+            "uq_movimentacao_estorno_consumo",
+            "consumo_original_id",
+            unique=True,
+            postgresql_where=text("tipo = 'ESTORNO'"),
+            sqlite_where=text("tipo = 'ESTORNO'"),
+        ),
+        # Garante idempotência de requisições de escrita (recarga/consumo):
+        # a mesma chave nunca gera duas movimentações.
+        Index(
+            "uq_movimentacao_idempotency_key",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+            sqlite_where=text("idempotency_key IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -60,6 +87,10 @@ class Movimentacao(Base):
     criado_por: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("usuarios.id"), nullable=True,
     )
+    consumo_original_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("movimentacoes.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
+    idempotency_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False,
     )

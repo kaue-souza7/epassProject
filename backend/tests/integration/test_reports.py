@@ -5,6 +5,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import create_access_token
 from app.modules.academic_config.service import ConfiguracaoAcademicaService
 from app.shared.enums import Parentesco, Perfil, StatusFrequencia
 from tests.factories import (
@@ -27,7 +28,7 @@ from tests.factories import (
 
 @pytest.fixture
 async def setup_data(session: AsyncSession):
-    ano = await create_ano_letivo(session)
+    ano = await create_ano_letivo(session, ano=2026)
     config_service = ConfiguracaoAcademicaService(session)
     await config_service.obter(ano.id)
     serie = await create_serie(session)
@@ -36,7 +37,8 @@ async def setup_data(session: AsyncSession):
     )
     disciplina = await create_disciplina(session, codigo="MAT", nome="Matemática")
     disciplina2 = await create_disciplina(session, codigo="POR", nome="Português")
-    professor = await create_professor(session)
+    professor_user = await create_usuario(session, perfil=Perfil.PROFESSOR)
+    professor = await create_professor(session, usuario_id=professor_user.id)
     alocacao1 = await create_alocacao(
         session, professor_id=professor.usuario_id, turma_id=turma.id, disciplina_id=disciplina.id,
     )
@@ -68,13 +70,23 @@ async def setup_data(session: AsyncSession):
         "turma": turma,
         "disciplina": disciplina,
         "alocacao1": alocacao1,
+        "professor_user": professor_user,
     }
 
 
+async def _login_professor(client: AsyncClient, professor_user) -> None:
+    token = create_access_token(
+        subject=str(professor_user.id),
+        extra_claims={"perfil": professor_user.perfil.value},
+    )
+    client.headers = {"Authorization": f"Bearer {token}"}
+
+
 class TestBimestralReport:
-    async def test_bimestral_report(self, auth_client: AsyncClient, setup_data):
+    async def test_bimestral_report(self, client: AsyncClient, setup_data):
         matricula = setup_data["matricula"]
-        response = await auth_client.get(
+        await _login_professor(client, setup_data["professor_user"])
+        response = await client.get(
             f"/reports/report-card/{matricula.id}",
             params={"bimestre": 1},
         )
@@ -94,9 +106,10 @@ class TestBimestralReport:
 
 
 class TestAnnualReport:
-    async def test_annual_report(self, auth_client: AsyncClient, setup_data):
+    async def test_annual_report(self, client: AsyncClient, setup_data):
         matricula = setup_data["matricula"]
-        response = await auth_client.get(
+        await _login_professor(client, setup_data["professor_user"])
+        response = await client.get(
             f"/reports/report-card/{matricula.id}/annual",
         )
         assert response.status_code == 200
@@ -113,9 +126,10 @@ class TestAnnualReport:
 
 
 class TestWeightedAverage:
-    async def test_weighted_average(self, auth_client: AsyncClient, setup_data):
+    async def test_weighted_average(self, client: AsyncClient, setup_data):
         matricula = setup_data["matricula"]
-        response = await auth_client.get(
+        await _login_professor(client, setup_data["professor_user"])
+        response = await client.get(
             f"/reports/report-card/{matricula.id}",
             params={"bimestre": 1},
         )
@@ -127,9 +141,10 @@ class TestWeightedAverage:
 
 
 class TestFrequency:
-    async def test_frequency_in_report(self, auth_client: AsyncClient, setup_data):
+    async def test_frequency_in_report(self, client: AsyncClient, setup_data):
         matricula = setup_data["matricula"]
-        response = await auth_client.get(
+        await _login_professor(client, setup_data["professor_user"])
+        response = await client.get(
             f"/reports/report-card/{matricula.id}",
             params={"bimestre": 1},
         )

@@ -31,6 +31,8 @@ class WalletDetailResponse(WalletResponse):
 
 class RecargaRequest(BaseModel):
     valor: Decimal = Field(..., gt=0, decimal_places=2)
+    aluno_id: uuid.UUID | None = None
+    idempotency_key: str | None = Field(None, max_length=120)
 
 
 class RecargaResponse(BaseModel):
@@ -44,6 +46,7 @@ class ConsumoRequest(BaseModel):
     uid_pulseira: str = Field(..., max_length=50)
     valor: Decimal = Field(..., gt=0, decimal_places=2)
     descricao: str | None = Field(None, max_length=255)
+    idempotency_key: str | None = Field(None, max_length=120)
 
 
 class ConsumoResponse(BaseModel):
@@ -78,6 +81,10 @@ class MovimentacaoItem(BaseModel):
 class ExtratoResponse(BaseModel):
     aluno_id: uuid.UUID
     movimentacoes: list[MovimentacaoItem]
+    total: int = 0
+    page: int = 1
+    size: int = 20
+    pages: int = 0
 
 
 class MovimentacaoDetailResponse(MovimentacaoItem):
