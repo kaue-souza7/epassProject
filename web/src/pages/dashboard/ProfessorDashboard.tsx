@@ -1,13 +1,21 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { Card } from "../../components/ui/Card";
+import { StatCard } from "../../components/ui/StatCard";
 import { ErrorState } from "../../components/ui/ErrorState";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { SkeletonDashboard } from "../../components/ui/SkeletonDashboard";
 import { dashboardApi } from "../../api/endpoints";
 import { logger } from "../../lib/logger";
 import type { ProfessorDashboardResponse } from "../../api/endpoints";
-import { FileText, ClipboardList } from "lucide-react";
+import {
+  FileText,
+  ClipboardList,
+  School,
+  BookOpen,
+  ClipboardCheck,
+  FileCheck2,
+} from "lucide-react";
 
 export function ProfessorDashboard() {
   const { user } = useAuth();
@@ -58,22 +66,33 @@ export function ProfessorDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="text-center">
-          <p className="text-3xl font-bold text-primary-500">{data?.cards.minhas_turmas ?? "—"}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Minhas Turmas</p>
-        </Card>
-        <Card className="text-center">
-          <p className="text-3xl font-bold text-primary-500">{data?.cards.minhas_disciplinas ?? "—"}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Minhas Disciplinas</p>
-        </Card>
-        <Card className="text-center">
-          <p className="text-3xl font-bold text-primary-500">{data?.cards.chamadas_realizadas ?? "—"}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Chamadas Realizadas</p>
-        </Card>
-        <Card className="text-center">
-          <p className="text-3xl font-bold text-primary-500">{data?.cards.avaliacoes_cadastradas ?? "—"}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Avaliações</p>
-        </Card>
+        <StatCard
+          index={0}
+          icon={School}
+          label="Minhas Turmas"
+          value={data?.cards.minhas_turmas}
+        />
+        <StatCard
+          index={1}
+          icon={BookOpen}
+          label="Minhas Disciplinas"
+          value={data?.cards.minhas_disciplinas}
+          tone="info"
+        />
+        <StatCard
+          index={2}
+          icon={ClipboardCheck}
+          label="Chamadas Realizadas"
+          value={data?.cards.chamadas_realizadas}
+          tone="success"
+        />
+        <StatCard
+          index={3}
+          icon={FileCheck2}
+          label="Avaliações"
+          value={data?.cards.avaliacoes_cadastradas}
+          tone="warning"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

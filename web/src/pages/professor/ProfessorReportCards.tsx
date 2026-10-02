@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { allocationsApi, enrollmentsApi, classesApi, subjectsApi, seriesApi, academicYearsApi } from "../../api/endpoints";
+import { useNavigate, useParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { allocationsApi, enrollmentsApi, classesApi, subjectsApi, seriesApi, academicYearsApi, boletimLiberacaoApi } from "../../api/endpoints";
 import { useAuth } from "../../contexts/AuthContext";
 import { Breadcrumb } from "../../components/layout/Breadcrumb";
 import { PageHeader } from "../../components/layout/PageHeader";
@@ -12,13 +12,16 @@ import { DataTable } from "../../components/ui/DataTable";
 import { Badge } from "../../components/ui/Badge";
 import { ErrorState } from "../../components/ui/ErrorState";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { School, BookOpen, FileText, Search, Users } from "lucide-react";
+import { School, BookOpen, FileText, Search, Users, CheckCircle } from "lucide-react";
 
 export function ProfessorReportCards() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { turmaId } = useParams<{ turmaId?: string }>();
   const prefix = `/${user?.perfil}`;
-  const [selectedTurmaId, setSelectedTurmaId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [selectedTurmaId, setSelectedTurmaId] = useState<string | null>(turmaId ?? null);
+  const [selectedBimestre, setSelectedBimestre] = useState(1);
   const [search, setSearch] = useState("");
 
   const { data: allocationsData, isLoading: loadingAllocations } = useQuery({
@@ -57,6 +60,21 @@ export function ProfessorReportCards() {
     .filter((a) => !a.data_fim)
     .filter((a, i, arr) => arr.findIndex((x) => x.turma_id === a.turma_id) === i);
 
+  const isFromMyClasses = !!turmaId;
+
+  const { data: releaseStatus, isLoading: loadingRelease } = useQuery({
+    queryKey: ["liberacao-status", selectedTurmaId, selectedBimestre],
+    queryFn: () => boletimLiberacaoApi.getStatus(selectedTurmaId!, selectedBimestre),
+    enabled: !!selectedTurmaId,
+  });
+
+  const liberarMutation = useMutation({
+    mutationFn: () => boletimLiberacaoApi.liberar(selectedTurmaId!, selectedBimestre),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["liberacao-status"] });
+    },
+  });
+
   const { data: enrollmentsData, isLoading: loadingEnrollments, isError: errorEnrollments } = useQuery({
     queryKey: ["enrollments-by-turma", selectedTurmaId],
     queryFn: () => enrollmentsApi.list({ turma_id: selectedTurmaId!, size: 100 }),
@@ -76,7 +94,7 @@ export function ProfessorReportCards() {
   if (loadingAllocations) {
     return (
       <div>
-        <Breadcrumb items={[{ label: "Boletins" }]} />
+        <Breadcrumb items={isFromMyClasses ? [{ label: "Minhas Turmas", path: `${prefix}/minhas-turmas` }, { label: "Boletim" }] : [{ label: "Boletins" }]} />
         <PageHeader title="Boletins" description="Carregando turmas..." />
         <div className="flex justify-center py-12"><Spinner /></div>
       </div>
@@ -85,9 +103,8 @@ export function ProfessorReportCards() {
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Boletins" }]} />
+      <Breadcrumb items={isFromMyClasses ? [{ label: "Minhas Turmas", path: `${prefix}/minhas-turmas` }, { label: "Boletim" }] : [{ label: "Boletins" }]} />
 
-      {/* Step 1: Turma Selection */}
       {!selectedTurmaId && (
         <>
           <PageHeader
@@ -154,15 +171,21 @@ export function ProfessorReportCards() {
         </>
       )}
 
-      {/* Step 2: Student List */}
       {selectedTurmaId && (
         <>
           <PageHeader
             title="Boletins"
             description={`Alunos da turma ${turmaMap.get(selectedTurmaId)?.codigo ?? ""}`}
           >
-            <Button variant="outline" onClick={() => { setSelectedTurmaId(null); setSearch(""); }}>
-              Voltar para turmas
+            <Button variant="outline" onClick={() => {
+              if (isFromMyClasses) {
+                navigate(`${prefix}/minhas-turmas`);
+              } else {
+                setSelectedTurmaId(null);
+                setSearch("");
+              }
+            }}>
+              {isFromMyClasses ? "Voltar para Minhas Turmas" : "Voltar para turmas"}
             </Button>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -174,6 +197,46 @@ export function ProfessorReportCards() {
               />
             </div>
           </PageHeader>
+
+          <Card className="mb-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Bimestre:</span>
+                <select
+                  className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-transparent dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={selectedBimestre}
+                  onChange={(e) => setSelectedBimestre(Number(e.target.value))}
+                >
+                  <option value={1}>1º</option>
+                  <option value={2}>2º</option>
+                  <option value={3}>3º</option>
+                  <option value={4}>4º</option>
+                </select>
+              </div>
+
+              {loadingRelease ? (
+                <Spinner />
+              ) : releaseStatus ? (
+                <div className="flex items-center gap-3">
+                  <Badge variant={releaseStatus.todas_liberadas ? "success" : "warning"}>
+                    {releaseStatus.todas_liberadas
+                      ? `${releaseStatus.total_disciplinas_professor}/${releaseStatus.total_disciplinas_professor} liberadas`
+                      : `${releaseStatus.disciplinas_liberadas.filter((d) => d.liberada).length}/${releaseStatus.total_disciplinas_professor} liberadas`}
+                  </Badge>
+                  {!releaseStatus.todas_liberadas && (
+                    <Button
+                      size="sm"
+                      onClick={() => liberarMutation.mutate()}
+                      disabled={liberarMutation.isPending}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      {liberarMutation.isPending ? "Liberando..." : "Liberar Boletim"}
+                    </Button>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </Card>
 
           {loadingEnrollments ? (
             <div className="flex justify-center py-12"><Spinner /></div>

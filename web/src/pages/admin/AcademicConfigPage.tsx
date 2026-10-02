@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { academicYearsApi, academicConfigApi } from "../../api/endpoints";
+import { academicYearsApi, academicConfigApi, boletimLiberacaoApi, systemConfigApi } from "../../api/endpoints";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../components/ui/Toast";
 import { Input } from "../../components/ui/Input";
@@ -12,7 +12,7 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Spinner } from "../../components/ui/Spinner";
 import { Breadcrumb } from "../../components/layout/Breadcrumb";
-import { AlertCircle, AlertTriangle, Settings } from "lucide-react";
+import { AlertCircle, AlertTriangle, Settings, Calendar, Mail, CheckCircle, XCircle } from "lucide-react";
 
 const schema = z.object({
   media_aprovacao: z.string().min(1, "Média de aprovação é obrigatória")
@@ -29,6 +29,245 @@ const schema = z.object({
 });
 
 type FormData = z.infer<typeof schema>;
+
+const smtpSchema = z.object({
+  smtp_host: z.string().min(1, "Servidor SMTP é obrigatório"),
+  smtp_port: z.string().min(1, "Porta é obrigatória").refine((v) => {
+    const n = parseInt(v, 10);
+    return n >= 1 && n <= 65535;
+  }, "Porta inválida"),
+  smtp_user: z.string().min(1, "Usuário é obrigatório"),
+  // Vazia = manter a senha já salva (ela nunca volta da API).
+  smtp_password: z.string(),
+  smtp_from: z.string().min(1, "Remetente é obrigatório").email("E-mail inválido"),
+  smtp_crypto: z.enum(["starttls", "ssl", "none"]),
+});
+
+type SmtpFormData = z.infer<typeof smtpSchema>;
+
+// A API expõe dois booleanos; o formulário expõe a escolha que o admin
+// reconhece. TLS implícito ganha quando os dois vierem ligados.
+function cryptoDoConfig(cfg: { smtp_use_ssl?: boolean | null; smtp_use_tls?: boolean | null }): SmtpFormData["smtp_crypto"] {
+  if (cfg.smtp_use_ssl) return "ssl";
+  return cfg.smtp_use_tls === false ? "none" : "starttls";
+}
+
+function SmtpConfigSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [testEmail, setTestEmail] = useState("");
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const {
+    register: registerSmtp,
+    handleSubmit: handleSubmitSmtp,
+    reset: resetSmtp,
+    formState: { errors: smtpErrors },
+  } = useForm<SmtpFormData>({
+    resolver: zodResolver(smtpSchema),
+    defaultValues: {
+      smtp_host: "",
+      smtp_port: "587",
+      smtp_user: "",
+      smtp_password: "",
+      smtp_from: "",
+      smtp_crypto: "starttls",
+    },
+  });
+
+  const { data: smtpConfig, isLoading: loadingSmtp } = useQuery({
+    queryKey: ["smtp-config"],
+    queryFn: () => systemConfigApi.getSmtp(),
+  });
+
+  useEffect(() => {
+    if (smtpConfig) {
+      resetSmtp({
+        smtp_host: smtpConfig.smtp_host || "",
+        smtp_port: String(smtpConfig.smtp_port || 587),
+        smtp_user: smtpConfig.smtp_user || "",
+        smtp_password: "",
+        smtp_from: smtpConfig.smtp_from || "",
+        smtp_crypto: cryptoDoConfig(smtpConfig),
+      });
+    }
+  }, [smtpConfig, resetSmtp]);
+
+  const saveMutation = useMutation({
+    mutationFn: (data: SmtpFormData) =>
+      systemConfigApi.saveSmtp({
+        smtp_host: data.smtp_host,
+        smtp_port: parseInt(data.smtp_port, 10),
+        smtp_user: data.smtp_user,
+        smtp_password: data.smtp_password || undefined,
+        smtp_from: data.smtp_from,
+        smtp_use_tls: data.smtp_crypto === "starttls",
+        smtp_use_ssl: data.smtp_crypto === "ssl",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["smtp-config"] });
+      toast("success", "Configuração SMTP salva com sucesso");
+    },
+    onError: (err: any) => {
+      toast("error", err?.response?.data?.message || "Erro ao salvar configuração SMTP");
+    },
+  });
+
+  const testMutation = useMutation({
+    mutationFn: () => systemConfigApi.testSmtp(testEmail),
+    onSuccess: (data) => {
+      setTestResult(data);
+      if (data.success) {
+        toast("success", data.message);
+      } else {
+        toast("error", data.message);
+      }
+    },
+    onError: (err: any) => {
+      setTestResult({ success: false, message: err?.response?.data?.message || "Erro ao testar SMTP" });
+      toast("error", "Erro ao testar envio de e-mail");
+    },
+  });
+
+  const onSaveSmtp = (data: SmtpFormData) => {
+    // Sem senha no formulário e sem senha salva, o save deixaria o SMTP
+    // inutilizável — e o `configured` continuaria marcado como ativo.
+    if (!data.smtp_password && !smtpConfig?.configured) {
+      toast("error", "Informe a senha SMTP para concluir a configuração");
+      return;
+    }
+    saveMutation.mutate(data);
+  };
+
+  return (
+    <Card className="mt-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Mail className="h-5 w-5 text-primary-500" />
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Configuração de E-mail (SMTP)
+        </h2>
+      </div>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        Configure o servidor de e-mail para envio automático de notificações de prazo de boletim.
+      </p>
+
+      {smtpConfig?.configured && (
+        <div className="flex items-center gap-2 p-3 mb-4 bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 rounded-lg">
+          <CheckCircle className="h-4 w-4 text-success-500 flex-shrink-0" />
+          <span className="text-sm text-success-600 dark:text-success-400">
+            SMTP configurado e ativo
+          </span>
+        </div>
+      )}
+
+      {loadingSmtp ? (
+        <Spinner />
+      ) : (
+        <form onSubmit={handleSubmitSmtp(onSaveSmtp)} noValidate>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Servidor SMTP"
+                placeholder="smtp.gmail.com"
+                error={smtpErrors.smtp_host?.message}
+                {...registerSmtp("smtp_host")}
+              />
+              <Input
+                label="Porta"
+                type="number"
+                placeholder="587"
+                error={smtpErrors.smtp_port?.message}
+                {...registerSmtp("smtp_port")}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Usuário / E-mail"
+                placeholder="seu-email@gmail.com"
+                error={smtpErrors.smtp_user?.message}
+                {...registerSmtp("smtp_user")}
+              />
+              <Input
+                label="Senha (preencha para alterar)"
+                type="password"
+                placeholder={smtpConfig?.configured ? "••••••••" : "Senha de aplicativo SMTP"}
+                error={smtpErrors.smtp_password?.message}
+                {...registerSmtp("smtp_password")}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Remetente (e-mail)"
+                placeholder="noreply@epass.edu.br"
+                error={smtpErrors.smtp_from?.message}
+                {...registerSmtp("smtp_from")}
+              />
+              <Select
+                label="Criptografia"
+                options={[
+                  { value: "starttls", label: "TLS/STARTTLS — porta 587 (recomendado)" },
+                  { value: "ssl", label: "SSL/TLS implícito — porta 465" },
+                  { value: "none", label: "Sem criptografia" },
+                ]}
+                error={smtpErrors.smtp_crypto?.message}
+                {...registerSmtp("smtp_crypto")}
+              />
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              A criptografia precisa bater com a porta: 465 só aceita TLS implícito e
+              587 só aceita STARTTLS. No Gmail e no Outlook use uma{" "}
+              <span className="font-medium">senha de aplicativo</span> (a senha da conta
+              é recusada), gerada com a verificação em 2 etapas ativa e colada sem espaços.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
+            <Button type="submit" loading={saveMutation.isPending}>
+              Salvar Configuração SMTP
+            </Button>
+          </div>
+        </form>
+      )}
+
+      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          Testar Envio de E-mail
+        </h3>
+        <div className="flex items-end gap-3">
+          <Input
+            label="E-mail de destino"
+            placeholder="destinatario@exemplo.com"
+            value={testEmail}
+            onChange={(e) => setTestEmail(e.target.value)}
+          />
+          <Button
+            onClick={() => testMutation.mutate()}
+            disabled={!testEmail || testMutation.isPending}
+            variant="secondary"
+          >
+            Enviar Teste
+          </Button>
+        </div>
+        {testResult && (
+          <div className={`flex items-center gap-2 mt-3 p-3 rounded-lg ${
+            testResult.success
+              ? "bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800"
+              : "bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800"
+          }`}>
+            {testResult.success ? (
+              <CheckCircle className="h-4 w-4 text-success-500 flex-shrink-0" />
+            ) : (
+              <XCircle className="h-4 w-4 text-danger-500 flex-shrink-0" />
+            )}
+            <span className={`text-sm ${testResult.success ? "text-success-600 dark:text-success-400" : "text-danger-600 dark:text-danger-400"}`}>
+              {testResult.message}
+            </span>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
 
 export function AcademicConfigPage() {
   const { user } = useAuth();
@@ -107,6 +346,34 @@ export function AcademicConfigPage() {
   }));
 
   const loading = loadingAnos || (selectedAnoLetivo && loadingConfig);
+
+  const [novoPrazoBimestre, setNovoPrazoBimestre] = useState(1);
+  const [novoPrazoData, setNovoPrazoData] = useState("");
+  const [novoPrazoHora, setNovoPrazoHora] = useState("23:59");
+
+  const { data: prazos, isLoading: loadingPrazos } = useQuery({
+    queryKey: ["prazos-liberacao", selectedAnoLetivo],
+    queryFn: () => boletimLiberacaoApi.listarPrazos(selectedAnoLetivo),
+    enabled: !!selectedAnoLetivo,
+  });
+
+  const criarPrazoMutation = useMutation({
+    mutationFn: () => boletimLiberacaoApi.criarPrazo({
+      ano_letivo_id: selectedAnoLetivo,
+      bimestre: novoPrazoBimestre,
+      data_limite: novoPrazoData,
+      hora_limite: `${novoPrazoHora}:00`,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["prazos-liberacao", selectedAnoLetivo] });
+      setNovoPrazoData("");
+      setNovoPrazoHora("23:59");
+      toast("success", "Prazo de liberação criado com sucesso");
+    },
+    onError: (err: any) => {
+      toast("error", err?.response?.data?.message || "Erro ao criar prazo");
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -261,6 +528,82 @@ export function AcademicConfigPage() {
           </Card>
         </form>
       )}
+
+      {selectedAnoLetivo && !loading && (
+        <Card className="mt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Calendar className="h-5 w-5 text-primary-500" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Prazos de Liberação de Boletim
+            </h2>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Configure as datas e horários limite para liberação de boletim por bimestre (horário em UTC).
+          </p>
+
+          {loadingPrazos ? (
+            <Spinner />
+          ) : (
+            <>
+              {prazos && prazos.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {prazos.map((prazo) => (
+                    <div key={prazo.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {prazo.bimestre}º Bimestre
+                        </span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                          — Prazo: {new Date(prazo.data_limite).toLocaleDateString("pt-BR")} às {prazo.hora_limite ? prazo.hora_limite.substring(0, 5) : "23:59"}
+                        </span>
+                        {prazo.notificado_em && (
+                          <span className="text-xs text-warning-600 dark:text-warning-400 ml-2">
+                            (Notificado)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-end gap-3 p-3 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                <Select
+                  label="Bimestre"
+                  options={[
+                    { value: "1", label: "1º" },
+                    { value: "2", label: "2º" },
+                    { value: "3", label: "3º" },
+                    { value: "4", label: "4º" },
+                  ]}
+                  value={String(novoPrazoBimestre)}
+                  onChange={(e) => setNovoPrazoBimestre(Number(e.target.value))}
+                />
+                <Input
+                  label="Data Limite"
+                  type="date"
+                  value={novoPrazoData}
+                  onChange={(e) => setNovoPrazoData(e.target.value)}
+                />
+                <Input
+                  label="Hora Limite (UTC)"
+                  type="time"
+                  value={novoPrazoHora}
+                  onChange={(e) => setNovoPrazoHora(e.target.value)}
+                />
+                <Button
+                  onClick={() => criarPrazoMutation.mutate()}
+                  disabled={!novoPrazoData || criarPrazoMutation.isPending}
+                >
+                  Adicionar Prazo
+                </Button>
+              </div>
+            </>
+          )}
+        </Card>
+      )}
+
+      <SmtpConfigSection />
     </div>
   );
 }

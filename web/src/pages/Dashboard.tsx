@@ -4,19 +4,22 @@ import { Card } from "../components/ui/Card";
 export function Dashboard() {
   const { user } = useAuth();
 
-  const perfilLabel = {
+  const perfilLabel: Record<string, string> = {
     admin: "Administrativo",
     secretaria: "Secretaria",
+    coordenador: "Coordenação",
     professor: "Docente",
     responsavel: "Responsável",
-  }[user?.perfil || "admin"];
+    cantineiro: "Cantina",
+  };
+  const label = perfilLabel[user?.perfil || "admin"];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          Bem-vindo, {user?.nome} — Painel {perfilLabel}
+          Bem-vindo, {user?.nome} — Painel {label}
         </p>
       </div>
 

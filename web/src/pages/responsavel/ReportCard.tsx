@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { studentsApi, reportsApi } from "../../api/endpoints";
 import { useAuth } from "../../contexts/AuthContext";
@@ -43,6 +43,7 @@ const situacaoLabel: Record<string, string> = {
 export function ReportCard() {
   const { childId, enrollmentId } = useParams<{ childId?: string; enrollmentId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const prefix = `/${user?.perfil}`;
   const [bimestre, setBimestre] = useState(1);
@@ -83,10 +84,10 @@ export function ReportCard() {
 
   const queryClient = useQueryClient();
 
-  const isProfessorFlow = !childId;
+  const isProfessorFlow = !childId && location.pathname.startsWith("/professor/");
   const breadcrumbItems = isProfessorFlow
     ? [
-        { label: "Boletins", path: `${prefix}/boletins` },
+        { label: "Minhas Turmas", path: `${prefix}/minhas-turmas` },
         { label: "Boletim" },
       ]
     : [
@@ -96,7 +97,7 @@ export function ReportCard() {
       ];
 
   const backPath = isProfessorFlow
-    ? `${prefix}/boletins`
+    ? `${prefix}/minhas-turmas`
     : `${prefix}/meus-filhos/${childId}`;
 
   if (isLoading) {
@@ -202,86 +203,102 @@ export function ReportCard() {
         </div>
       </div>
 
-      <Card padding="none" className="overflow-hidden mb-6">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                <th className="text-left px-4 md:px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Disciplina</th>
-                <th className="text-center px-4 md:px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Média</th>
-                <th className="text-center px-4 md:px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Frequência</th>
-                {annualReport?.media_pre_recuperacao != null && (
-                  <th className="text-center px-4 md:px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Recuperação</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {report.disciplinas.map((d) => (
-                <tr key={d.disciplina_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <td className="px-4 md:px-6 py-3 text-gray-900 dark:text-gray-100 font-medium">
-                    {d.disciplina_nome}
-                    {d.situacao === "recuperacao" && (
-                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400">
-                        Em Rec.
-                      </span>
+      {report.disciplinas.length === 0 ? (
+        <Card>
+          <div className="text-center py-8">
+            <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Boletim não disponível
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+              As notas deste bimestre ainda não foram liberadas pelo professor.
+            </p>
+          </div>
+        </Card>
+      ) : (
+        <>
+          <Card padding="none" className="overflow-hidden mb-6">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                    <th className="text-left px-4 md:px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Disciplina</th>
+                    <th className="text-center px-4 md:px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Média</th>
+                    <th className="text-center px-4 md:px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Frequência</th>
+                    {annualReport?.media_pre_recuperacao != null && (
+                      <th className="text-center px-4 md:px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Recuperação</th>
                     )}
-                  </td>
-                  <td className="px-4 md:px-6 py-3 text-center text-gray-700 dark:text-gray-300">
-                    {Number(d.media).toFixed(1)}
-                  </td>
-                  <td className="px-4 md:px-6 py-3 text-center">
-                    {d.frequencia !== null && d.frequencia !== undefined ? (
-                      <span className={d.frequencia < 75 ? "text-danger-500 font-medium" : "text-gray-700 dark:text-gray-300"}>
-                        {d.frequencia.toFixed(1)}%
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
-                  {annualReport?.media_pre_recuperacao != null && (
-                    <td className="px-4 md:px-6 py-3 text-center">
-                      {d.nota_recuperacao != null ? (
-                        <span className="tabular-nums text-primary-600 dark:text-primary-400 font-medium">
-                          {Number(d.nota_recuperacao).toFixed(1)}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {report.disciplinas.map((d) => (
+                    <tr key={d.disciplina_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      <td className="px-4 md:px-6 py-3 text-gray-900 dark:text-gray-100 font-medium">
+                        {d.disciplina_nome}
+                        {d.situacao === "recuperacao" && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400">
+                            Em Rec.
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 md:px-6 py-3 text-center text-gray-700 dark:text-gray-300">
+                        {Number(d.media).toFixed(1)}
+                      </td>
+                      <td className="px-4 md:px-6 py-3 text-center">
+                        {d.frequencia !== null && d.frequencia !== undefined ? (
+                          <span className={d.frequencia < 75 ? "text-danger-500 font-medium" : "text-gray-700 dark:text-gray-300"}>
+                            {d.frequencia.toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                      {annualReport?.media_pre_recuperacao != null && (
+                        <td className="px-4 md:px-6 py-3 text-center">
+                          {d.nota_recuperacao != null ? (
+                            <span className="tabular-nums text-primary-600 dark:text-primary-400 font-medium">
+                              {Number(d.nota_recuperacao).toFixed(1)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
                       )}
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
 
-      <Card className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-primary-500 flex-shrink-0" />
-          <span className="truncate">Resumo do {bimestre}º Bimestre</span>
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-          <div className="flex items-center gap-3 p-3 md:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <BarChart3 className="h-6 w-6 md:h-8 md:w-8 text-primary-500 flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Média Geral</p>
-              <p className="text-base md:text-lg font-bold text-gray-900 dark:text-gray-100">
-                {mediaGeral !== null ? mediaGeral.toFixed(1) : "—"}
-              </p>
+          <Card className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary-500 flex-shrink-0" />
+              <span className="truncate">Resumo do {bimestre}º Bimestre</span>
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+              <div className="flex items-center gap-3 p-3 md:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <BarChart3 className="h-6 w-6 md:h-8 md:w-8 text-primary-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Média Geral</p>
+                  <p className="text-base md:text-lg font-bold text-gray-900 dark:text-gray-100">
+                    {mediaGeral !== null ? mediaGeral.toFixed(1) : "—"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 md:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <Percent className="h-6 w-6 md:h-8 md:w-8 text-primary-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Frequência Geral</p>
+                  <p className="text-base md:text-lg font-bold text-gray-900 dark:text-gray-100">
+                    {freqGeral !== null ? `${freqGeral.toFixed(1)}%` : "—"}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 md:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <Percent className="h-6 w-6 md:h-8 md:w-8 text-primary-500 flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Frequência Geral</p>
-              <p className="text-base md:text-lg font-bold text-gray-900 dark:text-gray-100">
-                {freqGeral !== null ? `${freqGeral.toFixed(1)}%` : "—"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </Card>
+          </Card>
+        </>
+      )}
 
       {hasAnnualReport && (
         <Card>
@@ -290,8 +307,8 @@ export function ReportCard() {
             Situação Final
           </h2>
           <div className="flex items-center gap-3 mb-3">
-            <Badge variant={situacaoBadge[annualReport.situacao_final] ?? "default"}>
-              {situacaoLabel[annualReport.situacao_final] ?? annualReport.situacao_final}
+            <Badge variant={situacaoBadge[annualReport.situacao_final ?? ""] ?? "default"}>
+              {situacaoLabel[annualReport.situacao_final ?? ""] ?? annualReport.situacao_final}
             </Badge>
             <span className="text-sm text-gray-500 dark:text-gray-400">
               Ano letivo {report.ano_letivo}

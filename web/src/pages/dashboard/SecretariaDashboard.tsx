@@ -1,13 +1,15 @@
 import { useEffect, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
 import { Card } from "../../components/ui/Card";
+import { StatCard } from "../../components/ui/StatCard";
 import { ErrorState } from "../../components/ui/ErrorState";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { SkeletonDashboard } from "../../components/ui/SkeletonDashboard";
 import { dashboardApi } from "../../api/endpoints";
 import { logger } from "../../lib/logger";
 import type { SecretariaDashboardResponse } from "../../api/endpoints";
-import { FilePlus, School } from "lucide-react";
+import { FilePlus, School, ClipboardList, Layers, UserX, CalendarCheck } from "lucide-react";
 
 export function SecretariaDashboard() {
   const { user } = useAuth();
@@ -51,29 +53,45 @@ export function SecretariaDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard Operacional</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">Bem-vindo, {user?.nome}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="text-center">
-          <p className="text-3xl font-bold text-primary-500">{data?.cards.matriculas_ativas ?? "—"}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Matrículas Ativas</p>
-        </Card>
-        <Card className="text-center">
-          <p className="text-3xl font-bold text-primary-500">{data?.cards.matriculas_ano ?? "—"}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Matrículas no Ano</p>
-        </Card>
-        <Card className="text-center">
-          <p className="text-3xl font-bold text-primary-500">{data?.cards.turmas_ativas ?? "—"}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Turmas Ativas</p>
-        </Card>
-        <Card className="text-center">
-          <p className="text-3xl font-bold text-danger-500">{data?.cards.alunos_sem_matricula ?? "—"}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Alunos sem Matrícula</p>
-        </Card>
+        <StatCard
+          index={0}
+          icon={ClipboardList}
+          label="Matrículas Ativas"
+          value={data?.cards.matriculas_ativas}
+        />
+        <StatCard
+          index={1}
+          icon={CalendarCheck}
+          label="Matrículas no Ano"
+          value={data?.cards.matriculas_ano}
+          tone="info"
+        />
+        <StatCard
+          index={2}
+          icon={Layers}
+          label="Turmas Ativas"
+          value={data?.cards.turmas_ativas}
+          tone="success"
+        />
+        <StatCard
+          index={3}
+          icon={UserX}
+          label="Alunos sem Matrícula"
+          value={data?.cards.alunos_sem_matricula}
+          tone="danger"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -131,6 +149,6 @@ export function SecretariaDashboard() {
           )}
         </Card>
       </div>
-    </div>
+    </motion.div>
   );
 }

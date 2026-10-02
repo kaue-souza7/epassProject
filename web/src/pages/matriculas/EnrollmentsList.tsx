@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { UserRound } from "lucide-react";
 import { enrollmentsApi, studentsApi, classesApi, seriesApi, academicYearsApi, type EnrollmentsListResponse } from "../../api/endpoints";
 import { useAuth } from "../../contexts/AuthContext";
 import { PageHeader } from "../../components/layout/PageHeader";
@@ -10,6 +11,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ErrorState } from "../../components/ui/ErrorState";
+import { BranchedMenu } from "../../components/ui/BranchedMenu";
 
 const statusOptions = [
   { value: "", label: "Todos os status" },
@@ -84,6 +86,12 @@ export function EnrollmentsList() {
     label: s.nome,
   }));
 
+  const alunoMenuItems = studentOptions.map((s) => ({
+    value: s.value,
+    label: s.label,
+    icon: UserRound,
+  }));
+
   const turmaOptions = (classes?.items ?? []).map((t) => {
     const serie = serieMap.get(t.serie_id);
     return {
@@ -132,21 +140,24 @@ export function EnrollmentsList() {
               }}
             />
             {studentOptions.length > 0 && searchAluno && !filterAlunoId && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-card dark:bg-card-dark border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                {studentOptions.map((s) => (
-                  <button
-                    key={s.value}
-                    type="button"
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    onClick={() => {
-                      setFilterAlunoId(s.value);
-                      setSearchAluno(s.label);
-                      setPage(1);
-                    }}
-                  >
-                    {s.label}
-                  </button>
-                ))}
+              <div className="absolute top-full left-0 right-0 mt-1 bg-card dark:bg-card-dark border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto p-2">
+                <BranchedMenu
+                  items={alunoMenuItems}
+                  label="Alunos encontrados"
+                  activeValue={filterAlunoId}
+                  onSelect={(value) => {
+                    const alvo = studentOptions.find((s) => s.value === value);
+                    if (!alvo) return;
+                    setFilterAlunoId(alvo.value);
+                    setSearchAluno(alvo.label);
+                    setPage(1);
+                  }}
+                  width={260}
+                  rowHeight={38}
+                  indent={30}
+                  branchLeaves
+                  className="epass-scrollbar"
+                />
               </div>
             )}
           </div>

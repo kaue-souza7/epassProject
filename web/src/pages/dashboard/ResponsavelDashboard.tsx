@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { Card } from "../../components/ui/Card";
+import { StatCard } from "../../components/ui/StatCard";
 import { Badge } from "../../components/ui/Badge";
 import { ErrorState } from "../../components/ui/ErrorState";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -8,7 +9,16 @@ import { SkeletonDashboard } from "../../components/ui/SkeletonDashboard";
 import { dashboardApi } from "../../api/endpoints";
 import { logger } from "../../lib/logger";
 import type { ResponsavelDashboardResponse } from "../../api/endpoints";
-import { UserCheck, School, TrendingUp, TrendingDown, Users } from "lucide-react";
+import {
+  UserCheck,
+  School,
+  TrendingUp,
+  TrendingDown,
+  Users,
+  ClipboardList,
+  GraduationCap,
+  Percent,
+} from "lucide-react";
 
 export function ResponsavelDashboard() {
   const { user } = useAuth();
@@ -68,22 +78,38 @@ export function ResponsavelDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="text-center">
-          <p className="text-3xl font-bold text-primary-500">{data?.cards.quantidade_filhos ?? "—"}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Filhos</p>
-        </Card>
-        <Card className="text-center">
-          <p className="text-3xl font-bold text-primary-500">{data?.cards.matriculas_ativas ?? "—"}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Matrículas Ativas</p>
-        </Card>
-        <Card className="text-center">
-          <p className="text-3xl font-bold text-success-500">{data?.cards.media_geral ?? "—"}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Média Geral</p>
-        </Card>
-        <Card className="text-center">
-          <p className="text-3xl font-bold text-success-500">{data?.cards.frequencia_media != null ? `${data.cards.frequencia_media}%` : "—"}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Frequência Média</p>
-        </Card>
+        <StatCard
+          index={0}
+          icon={Users}
+          label="Filhos"
+          value={data?.cards.quantidade_filhos}
+        />
+        <StatCard
+          index={1}
+          icon={ClipboardList}
+          label="Matrículas Ativas"
+          value={data?.cards.matriculas_ativas}
+          tone="info"
+        />
+        <StatCard
+          index={2}
+          icon={GraduationCap}
+          label="Média Geral"
+          value={data?.cards.media_geral}
+          tone="success"
+          decimals={1}
+        />
+        <StatCard
+          index={3}
+          icon={Percent}
+          label="Frequência Média"
+          value={
+            data?.cards.frequencia_media != null
+              ? `${data.cards.frequencia_media}%`
+              : undefined
+          }
+          tone="success"
+        />
       </div>
 
       <Card>

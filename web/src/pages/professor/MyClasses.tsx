@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { allocationsApi, classesApi, subjectsApi, seriesApi, academicYearsApi, type AllocationResponse } from "../../api/endpoints";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { allocationsApi, classesApi, subjectsApi, seriesApi, academicYearsApi, boletimLiberacaoApi, type AllocationResponse } from "../../api/endpoints";
 import { useAuth } from "../../contexts/AuthContext";
 import { Breadcrumb } from "../../components/layout/Breadcrumb";
 import { PageHeader } from "../../components/layout/PageHeader";
@@ -10,9 +10,8 @@ import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Spinner } from "../../components/ui/Spinner";
-import { AlertCircle, School, ExternalLink, BookOpen, FileText, Search } from "lucide-react";
+import { AlertCircle, School, ExternalLink, BookOpen, FileText, Search, Award, CheckCircle } from "lucide-react";
 import { ErrorState } from "../../components/ui/ErrorState";
-import { useQueryClient } from "@tanstack/react-query";
 
 export function MyClasses() {
   const navigate = useNavigate();
@@ -21,6 +20,7 @@ export function MyClasses() {
   const prefix = `/${user?.perfil}`;
   const [manualAlocacaoId, setManualAlocacaoId] = useState("");
   const [search, setSearch] = useState("");
+  const [liberarModal, setLiberarModal] = useState<{ turmaId: string; turmaCodigo: string; bimestre: number } | null>(null);
 
   const { data: allocationsData, isLoading, isError, error } = useQuery({
     queryKey: ["my-allocations", user?.id],
@@ -55,6 +55,15 @@ export function MyClasses() {
     enabled: !!allocations,
   });
 
+  const liberarMutation = useMutation({
+    mutationFn: ({ turmaId, bimestre }: { turmaId: string; bimestre: number }) =>
+      boletimLiberacaoApi.liberar(turmaId, bimestre),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["liberacao-status"] });
+      setLiberarModal(null);
+    },
+  });
+
   const isForbidden = isError && (error as any)?.response?.status === 403;
 
   const turmaMap = new Map((classes?.items ?? []).map((t) => [t.id, t]));
@@ -83,6 +92,10 @@ export function MyClasses() {
 
   const handleNavigateToAssessments = (alocacaoId: string) => {
     navigate(`${prefix}/turma/${alocacaoId}/avaliacoes`);
+  };
+
+  const handleNavigateToReportCards = (turmaId: string) => {
+    navigate(`${prefix}/turma/${turmaId}/boletins`);
   };
 
   if (isLoading) {
@@ -266,6 +279,33 @@ export function MyClasses() {
                         <FileText className="h-4 w-4 mr-1" />
                         Avaliações
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNavigateToReportCards(item.turma_id);
+                        }}
+                      >
+                        <Award className="h-4 w-4 mr-1" />
+                        Boletim
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const turma = turmaMap.get(item.turma_id);
+                          setLiberarModal({
+                            turmaId: item.turma_id,
+                            turmaCodigo: turma?.codigo ?? item.turma_id,
+                            bimestre: 1,
+                          });
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Liberar
+                      </Button>
                     </div>
                   ),
                 },
@@ -309,6 +349,21 @@ export function MyClasses() {
                           <FileText className="h-3.5 w-3.5 mr-1" />
                           Avaliações
                         </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleNavigateToReportCards(item.turma_id)}>
+                          <Award className="h-3.5 w-3.5 mr-1" />
+                          Boletim
+                        </Button>
+                        <Button size="sm" variant="primary" onClick={() => {
+                          const turma = turmaMap.get(item.turma_id);
+                          setLiberarModal({
+                            turmaId: item.turma_id,
+                            turmaCodigo: turma?.codigo ?? item.turma_id,
+                            bimestre: 1,
+                          });
+                        }}>
+                          <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                          Liberar
+                        </Button>
                       </div>
                     </div>
                   </Card>
@@ -317,6 +372,48 @@ export function MyClasses() {
             )}
           </div>
         </>
+      )}
+
+      {liberarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Liberar Boletim — {liberarModal.turmaCodigo}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Selecione o bimestre para liberar todas as suas disciplinas nesta turma.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Bimestre
+              </label>
+              <select
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-transparent dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                value={liberarModal.bimestre}
+                onChange={(e) => setLiberarModal({ ...liberarModal, bimestre: Number(e.target.value) })}
+              >
+                <option value={1}>1º Bimestre</option>
+                <option value={2}>2º Bimestre</option>
+                <option value={3}>3º Bimestre</option>
+                <option value={4}>4º Bimestre</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setLiberarModal(null)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => liberarMutation.mutate({ turmaId: liberarModal.turmaId, bimestre: liberarModal.bimestre })}
+                disabled={liberarMutation.isPending}
+              >
+                {liberarMutation.isPending ? "Liberando..." : "Confirmar Liberação"}
+              </Button>
+            </div>
+            {liberarMutation.isError && (
+              <p className="text-sm text-red-500 mt-2">Erro ao liberar boletim. Tente novamente.</p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

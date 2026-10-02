@@ -40,19 +40,27 @@ export function ChildDetails() {
     queryFn: () => enrollmentsApi.list(),
   });
 
+  // Catálogo acadêmico é restrito a admin/secretaria; responsável não pode
+  // consultar /classes, /series e /academic-years (403). Os nomes de turma já
+  // vêm na matrícula (turma_codigo), então as consultas são condicionadas ao perfil.
+  const podeVerCatalogo = user?.perfil === "admin" || user?.perfil === "secretaria";
+
   const { data: classes } = useQuery({
     queryKey: ["classes"],
-    queryFn: () => classesApi.list(),
+    queryFn: () => classesApi.list({ page: 1, size: 100 }),
+    enabled: podeVerCatalogo,
   });
 
   const { data: series } = useQuery({
     queryKey: ["series"],
     queryFn: () => seriesApi.list(),
+    enabled: podeVerCatalogo,
   });
 
   const { data: anosLetivos } = useQuery({
     queryKey: ["academic-years"],
     queryFn: () => academicYearsApi.list(),
+    enabled: podeVerCatalogo,
   });
 
   const enrollments = (enrollmentsData?.items || [])
