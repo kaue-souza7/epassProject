@@ -1,196 +1,242 @@
 import asyncio
+import os
+import sys
 import uuid
 from datetime import date, datetime, timezone
-from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import text
 
 from app.config import settings
 from app.core.security import hash_password
 from app.database import SessionLocal
-from app.modules.academic_years.models import AnoLetivo
-from app.modules.series.models import Serie
-from app.modules.subjects.models import Disciplina
-from app.modules.classes.models import Turma
-from app.modules.students.models import Aluno, ResponsavelAluno
-from app.modules.enrollments.models import Matricula
-from app.modules.teachers.models import ProfessorProfile
-from app.modules.allocations.models import Alocacao
-from app.modules.academic_config.models import ConfiguracaoAcademica
-from app.modules.users.models import Usuario
-from app.modules.auth.models import Sessao  # needed for relationship resolution
-from app.modules.financial.models import Wallet
-from app.modules.bracelets.models import Bracelet
-from app.shared.enums import Perfil, Turno, StatusMatricula, Parentesco, StatusCarteira, StatusPulseira
+
+
+def uid():
+    return str(uuid.uuid4())
+
+
+# Ordem FK-segura: filhos antes dos pais. Inclui as tabelas de comunicação.
+_TABELAS_RESET = [
+    # comunicação
+    "push_tickets", "push_tokens", "avisos_mensagens", "avisos_destinatarios",
+    "notificacoes", "ocorrencias_historico", "avisos", "ocorrencias",
+    # cantina
+    "itens_pedido", "pedidos", "movimentacoes_estoque",
+    "programacao_itens", "programacao_cantina",
+    # financeiro/acadêmico
+    "movimentacoes", "notas", "frequencias", "chamadas", "avaliacoes",
+    "liberacoes_boletim", "prazos_liberacao", "alocacoes",
+    "wallets", "bracelets", "matriculas", "responsavel_aluno",
+    "professor_profiles", "configuracoes_academicas",
+    # agenda/auth
+    "sessoes", "evento_destinatarios", "eventos",
+    # base
+    "alunos", "usuarios", "produtos", "cantina_config",
+]
+
+
+async def _limpar_tudo(session) -> None:
+    print("▶ Limpando dados existentes...")
+    total = 0
+    for t in _TABELAS_RESET:
+        r = await session.execute(text(f"SELECT COUNT(*) FROM {t}"))
+        cnt = r.scalar()
+        await session.execute(text(f"DELETE FROM {t}"))
+        total += cnt
+        if cnt > 0:
+            print(f"  {t}: {cnt}")
+    await session.flush()
+    print(f"  Total removidos: {total}\n")
 
 
 async def seed():
+    reset = "--reset" in sys.argv or os.getenv("SEED_RESET") == "1"
     print(f"Conectando ao banco: {settings.DATABASE_URL}")
     async with SessionLocal() as session:
-        # ── 1. USUÁRIOS ──────────────────────────────────────────
-        existing = await session.execute(select(Usuario).where(Usuario.email == "admin@teste.com"))
-        if existing.scalar_one_or_none():
-            print("⚠  Seed já executado anteriormente. Pulando.")
+        # Sem --reset/SEED_RESET=1, o seed só popula banco vazio. Isso evita
+        # apagar dados reais (avisos/ocorrências/carteira) a cada restart.
+        existentes = (await session.execute(
+            text("SELECT COUNT(*) FROM usuarios")
+        )).scalar()
+        if existentes and not reset:
+            print(
+                f"Seed ignorado: banco já possui {existentes} usuário(s). "
+                "Use `python seed_data.py --reset` para recriar os dados de exemplo.\n"
+            )
             return
 
-        senha_hash = hash_password("123456")
+        # ── 1. CLEAN ALL DATA (apenas com --reset) ──
+        await _limpar_tudo(session)
 
-        users_data = [
-            Usuario(id=uuid.uuid4(), nome="Administrador Teste", email="admin@teste.com", senha_hash=senha_hash, perfil=Perfil.ADMIN, ativo=True),
-            Usuario(id=uuid.uuid4(), nome="Secretaria Teste", email="secretaria@teste.com", senha_hash=senha_hash, perfil=Perfil.SECRETARIA, ativo=True),
-            Usuario(id=uuid.uuid4(), nome="Professor Teste", email="professor@teste.com", senha_hash=senha_hash, perfil=Perfil.PROFESSOR, ativo=True),
-            Usuario(id=uuid.uuid4(), nome="Responsável Teste", email="responsavel@teste.com", senha_hash=senha_hash, perfil=Perfil.RESPONSAVEL, ativo=True),
-        ]
+        senha = hash_password("123456")
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        for u in users_data:
-            session.add(u)
+        # ── 2. BASE ENTITIES (cria mínimos se o banco for novo) ──
+        r = await session.execute(text("SELECT id FROM anos_letivos WHERE ativo = true LIMIT 1"))
+        row = r.fetchone()
+        if row is None:
+            ano_letivo_id = uid()
+            await session.execute(text(
+                "INSERT INTO anos_letivos (id,ano,data_inicio,data_fim,ativo,created_at,updated_at) "
+                "VALUES (CAST(:id AS uuid),:ano,'2026-02-01','2026-12-15',true,:now,:now)"
+            ), {"id": ano_letivo_id, "ano": date.today().year, "now": now})
+            print(f"  ano letivo base criado ({date.today().year})")
+        else:
+            ano_letivo_id = row[0]
+
+        r = await session.execute(text("SELECT id FROM series WHERE ativo = true LIMIT 1"))
+        row = r.fetchone()
+        if row is None:
+            serie_id = uid()
+            await session.execute(text(
+                "INSERT INTO series (id,numero,nome,descricao,ativo,created_at,updated_at) "
+                "VALUES (CAST(:id AS uuid),1,'1º Ano','Série inicial',true,:now,:now)"
+            ), {"id": serie_id, "now": now})
+        else:
+            serie_id = row[0]
+
+        r = await session.execute(text("SELECT id FROM turmas WHERE ativo = true LIMIT 1"))
+        row = r.fetchone()
+        if row is None:
+            turma_id = uid()
+            await session.execute(text(
+                "INSERT INTO turmas (id,codigo,nome,serie_id,ano_letivo_id,turno,vagas_total,ativo,created_at,updated_at) "
+                "VALUES (CAST(:id AS uuid),'1A','Turma 1A',CAST(:serie AS uuid),CAST(:ano AS uuid),"
+                "CAST('MANHA' AS turno),30,true,:now,:now)"
+            ), {"id": turma_id, "serie": serie_id, "ano": ano_letivo_id, "now": now})
+            print("  turma base criada (1A)")
+        else:
+            turma_id = row[0]
+
+        r = await session.execute(text("SELECT id FROM disciplinas WHERE ativo = true LIMIT 1"))
+        row = r.fetchone()
+        if row is None:
+            disciplina_id = uid()
+            await session.execute(text(
+                "INSERT INTO disciplinas (id,codigo,nome,descricao,ativo,created_at,updated_at) "
+                "VALUES (CAST(:id AS uuid),'MAT','Matemática',NULL,true,:now,:now)"
+            ), {"id": disciplina_id, "now": now})
+            print("  disciplina base criada (Matemática)")
+        else:
+            disciplina_id = row[0]
         await session.flush()
-        print(f"✓ {len(users_data)} usuários criados")
 
-        admin = users_data[0]
-        professor = users_data[2]
-        responsavel = users_data[3]
+        kp = uid()  # kaue professor
+        ka = uid()  # kaue coordenador/admin
+        ri = uid()  # richard
+        bi = uid()  # binio (responsavel)
+        ci = uid()  # cantineiro
+        a1 = uid()  # aluno binio 1
+        a2 = uid()  # aluno binio 2
 
-        # ── 2. PROFESSOR PROFILE ─────────────────────────────────
-        prof_profile = ProfessorProfile(
-            usuario_id=professor.id,
-            formacao_principal="Licenciatura em Matemática",
-            matricula_funcional="PROF001",
-            data_contratacao=date(2024, 1, 15),
-            ativo=True,
-        )
-        session.add(prof_profile)
+        # ── 3. CREATE USERS ──
+        print("▶ Criando usuarios...")
+        for n, e, p, i in [
+            ("Kaue Professor", "kauekaue960@gmail.com", "PROFESSOR", kp),
+            ("Kaue Coordenador", "kauec282@gmail.com", "ADMIN", ka),
+            ("Richard", "elorichard95@gmail.com", "PROFESSOR", ri),
+            ("Binio", "biniosoares@gmail.com", "RESPONSAVEL", bi),
+            ("Maria Cantina", "maria.cantina@example.com", "CANTINEIRO", ci),
+        ]:
+            await session.execute(text(
+                "INSERT INTO usuarios (id,nome,email,senha_hash,perfil,ativo,created_at,updated_at) "
+                "VALUES (CAST(:id AS uuid),:nome,:email,:senha,CAST(:perfil AS perfil),true,:now,:now)"
+            ), {"id": i, "nome": n, "email": e, "senha": senha, "perfil": p, "now": now})
+            print(f"  {p}: {n} <{e}>")
         await session.flush()
-        print(f"✓ Perfil de professor criado (usuario_id={professor.id})")
 
-        # ── 3. ANO LETIVO ────────────────────────────────────────
-        ano_letivo = AnoLetivo(
-            id=uuid.uuid4(), ano=2026,
-            data_inicio=date(2026, 2, 1), data_fim=date(2026, 12, 20),
-            ativo=True,
-        )
-        session.add(ano_letivo)
+        # ── 4. PROFESSOR PROFILES ──
+        print("\n▶ Criando perfis de professor...")
+        await session.execute(text(
+            "INSERT INTO professor_profiles (usuario_id,formacao_principal,matricula_funcional,data_contratacao,ativo,created_at,updated_at) "
+            "VALUES (CAST(:uid AS uuid),'Licenciatura','PROF-KAUE-001','2024-01-15',true,:now,:now)"
+        ), {"uid": kp, "now": now})
+        await session.execute(text(
+            "INSERT INTO professor_profiles (usuario_id,formacao_principal,matricula_funcional,data_contratacao,ativo,created_at,updated_at) "
+            "VALUES (CAST(:uid AS uuid),'Licenciatura','PROF-RICH-002','2024-01-15',true,:now,:now)"
+        ), {"uid": ri, "now": now})
+        print(f"  Kaue Professor (PROF-KAUE-001)")
+        print(f"  Richard (PROF-RICH-002)")
         await session.flush()
-        print(f"✓ Ano letivo criado: 2026 (id={ano_letivo.id})")
 
-        # ── 4. SÉRIE ──────────────────────────────────────────────
-        serie = Serie(id=uuid.uuid4(), numero=1, nome="1º Ano", descricao="Primeiro ano do ensino fundamental", ativo=True)
-        session.add(serie)
+        # ── 5. CREATE STUDENTS ──
+        print("\n▶ Criando alunos...")
+        await session.execute(text(
+            "INSERT INTO alunos (id,nome,data_nascimento,data_entrada,ativo,autonomia_cantina,created_at,updated_at) "
+            "VALUES (CAST(:id AS uuid),:nome,:nasc,'2026-02-01',true,false,:now,:now)"
+        ), {"id": a1, "nome": "Aluno Binio 1", "nasc": date(2015, 3, 10), "now": now})
+        await session.execute(text(
+            "INSERT INTO alunos (id,nome,data_nascimento,data_entrada,ativo,autonomia_cantina,created_at,updated_at) "
+            "VALUES (CAST(:id AS uuid),:nome,:nasc,'2026-02-01',true,false,:now,:now)"
+        ), {"id": a2, "nome": "Aluno Binio 2", "nasc": date(2015, 7, 22), "now": now})
+        print(f"  Aluno Binio 1")
+        print(f"  Aluno Binio 2")
         await session.flush()
-        print(f"✓ Série criada: 1º Ano (id={serie.id})")
 
-        # ── 5. DISCIPLINA ─────────────────────────────────────────
-        disciplina = Disciplina(id=uuid.uuid4(), codigo="MAT", nome="Matemática", descricao="Disciplina de Matemática", ativo=True)
-        session.add(disciplina)
+        # ── 6. LINK STUDENTS TO BINIO ──
+        print("\n▶ Vinculando alunos ao Binio...")
+        for aid in [a1, a2]:
+            await session.execute(text(
+                "INSERT INTO responsavel_aluno (aluno_id,responsavel_id,parentesco,responsavel_financeiro) "
+                "VALUES (CAST(:aluno AS uuid),CAST(:resp AS uuid),'PAI',true)"
+            ), {"aluno": aid, "resp": bi})
+        print(f"  2 vinculos (pai)")
         await session.flush()
-        print(f"✓ Disciplina criada: Matemática (id={disciplina.id})")
 
-        # ── 6. TURMA ──────────────────────────────────────────────
-        turma = Turma(
-            id=uuid.uuid4(), codigo="1A", nome="1º Ano A",
-            serie_id=serie.id, ano_letivo_id=ano_letivo.id,
-            turno=Turno.MANHA, vagas_total=30, ativo=True,
-        )
-        session.add(turma)
+        # ── 7. CREATE WALLETS ──
+        print("\n▶ Criando wallets...")
+        for aid, nome in [(a1, "Aluno Binio 1"), (a2, "Aluno Binio 2")]:
+            await session.execute(text(
+                "INSERT INTO wallets (id,aluno_id,saldo,status,created_at,updated_at) "
+                "VALUES (CAST(:id AS uuid),CAST(:aluno AS uuid),0.00,'ATIVA',:now,:now)"
+            ), {"id": uid(), "aluno": aid, "now": now})
+            print(f"  {nome} -> wallet (R$ 0,00)")
         await session.flush()
-        print(f"✓ Turma criada: 1A (id={turma.id})")
 
-        # ── 7. ALUNO ──────────────────────────────────────────────
-        aluno = Aluno(
-            id=uuid.uuid4(), nome="Aluno Teste",
-            data_nascimento=date(2015, 5, 10),
-            cpf=None, rg=None, endereco=None, telefone=None, email=None,
-            data_entrada=date(2026, 2, 1), ativo=True,
-        )
-        session.add(aluno)
+        # ── 8. CREATE ENROLLMENTS ──
+        print("\n▶ Criando matriculas...")
+        for aid, nome in [(a1, "Aluno Binio 1"), (a2, "Aluno Binio 2")]:
+            await session.execute(text(
+                "INSERT INTO matriculas (id,aluno_id,turma_id,data_matricula,status,created_at,updated_at) "
+                "VALUES (CAST(:id AS uuid),CAST(:aluno AS uuid),CAST(:turma AS uuid),'2026-02-01','ATIVA',:now,:now)"
+            ), {"id": uid(), "aluno": aid, "turma": turma_id, "now": now})
+            print(f"  {nome} -> 1A (ATIVA)")
         await session.flush()
-        print(f"✓ Aluno criado: Aluno Teste (id={aluno.id})")
 
-        # ── 8. MATRÍCULA ──────────────────────────────────────────
-        matricula = Matricula(
-            id=uuid.uuid4(), aluno_id=aluno.id, turma_id=turma.id,
-            matricula_origem_id=None, data_matricula=date(2026, 2, 1),
-            status=StatusMatricula.ATIVA, data_saida=None, motivo_saida=None, observacoes=None,
-        )
-        session.add(matricula)
+        # ── 9. CREATE ALLOCATION ──
+        print("\n▶ Criando alocacao...")
+        await session.execute(text(
+            "INSERT INTO alocacoes (id,professor_id,turma_id,disciplina_id,data_inicio,created_at,updated_at) "
+            "VALUES (CAST(:id AS uuid),CAST(:prof AS uuid),CAST(:turma AS uuid),CAST(:disc AS uuid),'2026-02-01',:now,:now)"
+        ), {"id": uid(), "prof": kp, "turma": turma_id, "disc": disciplina_id, "now": now})
+        print(f"  Kaue Professor -> 1A / Matematica")
         await session.flush()
-        print(f"✓ Matrícula criada (id={matricula.id})")
 
-        # ── 9. VÍNCULO RESPONSÁVEL-ALUNO ─────────────────────────
-        vinculo = ResponsavelAluno(
-            aluno_id=aluno.id, responsavel_id=responsavel.id,
-            parentesco=Parentesco.PAI, responsavel_financeiro=True,
-        )
-        session.add(vinculo)
-        await session.flush()
-        print(f"✓ Vínculo responsável-aluno criado")
-
-        # ── 9.1 CARTEIRA DIGITAL ────────────────────────────────
-        wallet = Wallet(
-            aluno_id=aluno.id,
-            saldo=Decimal("50.00"),
-            status=StatusCarteira.ATIVA,
-        )
-        session.add(wallet)
-        await session.flush()
-        print(f"✓ Carteira criada com saldo inicial de R$ 50,00 (id={wallet.id})")
-
-        # ── 9.2 PULSEIRA ─────────────────────────────────────────
-        bracelet = Bracelet(
-            uid="RFID001",
-            codigo="PLS-001",
-            aluno_id=aluno.id,
-            status=StatusPulseira.ATIVA,
-        )
-        session.add(bracelet)
-        await session.flush()
-        print(f"✓ Pulseira criada (uid=RFID001, id={bracelet.id})")
-
-        # ── 10. ALOCAÇÃO ──────────────────────────────────────────
-        alocacao = Alocacao(
-            id=uuid.uuid4(), professor_id=professor.id, turma_id=turma.id,
-            disciplina_id=disciplina.id,
-            data_inicio=date(2026, 2, 1), data_fim=None,
-        )
-        session.add(alocacao)
-        await session.flush()
-        print(f"✓ Alocação criada (id={alocacao.id})")
-
-        # ── 11. CONFIGURAÇÃO ACADÊMICA ───────────────────────────
-        now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
-        config = ConfiguracaoAcademica(
-            id=uuid.uuid4(), ano_letivo_id=ano_letivo.id,
-            media_aprovacao=6.0, frequencia_minima=75.0,
-            possui_recuperacao=True, media_minima_recuperacao=4.0,
-            quantidade_periodos=4, ativo=True,
-            created_at=now_naive, updated_at=now_naive,
-        )
-        session.add(config)
-        await session.flush()
-        print(f"✓ Configuração acadêmica criada")
+        # ── 10. ACADEMIC CONFIG ──
+        print("\n▶ Criando configuracao academica...")
+        await session.execute(text(
+            "INSERT INTO configuracoes_academicas "
+            "(id,ano_letivo_id,media_aprovacao,frequencia_minima,possui_recuperacao,media_minima_recuperacao,quantidade_periodos,ativo,created_at,updated_at) "
+            "VALUES (CAST(:id AS uuid),CAST(:ano AS uuid),6.0,75.0,true,4.0,4,true,:now,:now)"
+        ), {"id": uid(), "ano": ano_letivo_id, "now": now})
+        print(f"  Config academica criada")
 
         await session.commit()
         print()
         print("=" * 50)
-        print("  ✅  SEED CONCLUÍDO COM SUCESSO")
+        print("  SEED CONCLUIDO COM SUCESSO")
         print("=" * 50)
         print()
-        print("Usuários criados:")
-        print(f"  admin@teste.com      / 123456  ({Perfil.ADMIN.value})")
-        print(f"  secretaria@teste.com / 123456  ({Perfil.SECRETARIA.value})")
-        print(f"  professor@teste.com  / 123456  ({Perfil.PROFESSOR.value})")
-        print(f"  responsavel@teste.com/ 123456  ({Perfil.RESPONSAVEL.value})")
+        print("Usuarios criados:")
+        print(f"  kauekaue960@gmail.com / 123456  (PROFESSOR)")
+        print(f"  kauec282@gmail.com    / 123456  (ADMIN)")
+        print(f"  elorichard95@gmail.com/ 123456  (PROFESSOR)")
+        print(f"  biniosoares@gmail.com / 123456  (RESPONSAVEL)")
+        print(f"  maria.cantina@example.com / 123456  (CANTINEIRO)")
         print()
-        print(f"IDs gerados:")
-        print(f"  Ano Letivo:    {ano_letivo.id}")
-        print(f"  Série:         {serie.id}")
-        print(f"  Disciplina:    {disciplina.id}")
-        print(f"  Turma:         {turma.id}")
-        print(f"  Aluno:         {aluno.id}")
-        print(f"  Matrícula:     {matricula.id}")
-        print(f"  Alocação:      {alocacao.id}")
-        print(f"  Carteira:      {wallet.id}")
-        print(f"  Pulseira:      {bracelet.id}")
+        print("Alunos criados:")
+        print(f"  Aluno Binio 1 -> 1A (vinculado ao Binio)")
+        print(f"  Aluno Binio 2 -> 1A (vinculado ao Binio)")
         print()
 
 

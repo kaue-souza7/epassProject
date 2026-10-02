@@ -1,5 +1,74 @@
 services:
 
+  # ---------------------------------------------------------------------------
+  # IA local (Ollama) — container SEPARADO do backend.
+  #
+  # Decisões de arquitetura (ver relatório de arquitetura do Bloco 1):
+  #  - O Ollama NUNCA acessa o PostgreSQL. Não há DSN, usuário ou senha de banco
+  #    neste serviço: a IA só fala HTTP com o backend pela rede do Compose.
+  #  - A porta 11434 NÃO é publicada. Apenas o backend (rede interna) conversa com
+  #    a IA. Para depurar: docker compose exec ollama ollama list
+  #  - KEEP_ALIVE devolve RAM ao sistema após 5 min sem uso — essencial em um Mac
+  #    de 8 GB que também roda PostgreSQL, backend e Vite.
+  #  - MAX_LOADED_MODELS/NUM_PARALLEL=1: serializa inferências para não estourar
+  #    a memória unificada.
+  #  - No macOS o Metal é nativo do host; dentro do container a aceleração pode
+  #    não estar disponível (CPU-only). Isso NÃO quebra nada. Para acelerar no
+  #    Mac, rode Ollama nativo (brew install ollama) e no backend use
+  #    OLLAMA_BASE_URL=http://host.docker.internal:11434
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:${OLLAMA_TAG:-0.34.4}
+    container_name: epass-ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_QUEUE: "16"
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  # One-shot idempotente: baixa o modelo SOMENTE se ele ainda não existir.
+  # Regras:
+  #  - `docker compose up` pode ser executado quantas vezes for: nunca re-baixa.
+  #  - Falha de download (ex.: offline) NÃO derruba o SGE: o bootstrap encerra e o
+  #    backend segue no ar com a IA em modo degradado (/ai/health informa).
+  #  - Nunca é `depends_on` do backend — o SGE não pode depender da IA.
+  ollama-bootstrap:
+    image: ollama/ollama:${OLLAMA_TAG:-0.34.4}
+    container_name: epass-ollama-bootstrap
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        MODEL="$${OLLAMA_MODEL}"
+        echo "Verificando modelo $$MODEL..."
+        if ollama list 2>/dev/null | awk 'NR>1 {print $$1}' | grep -qx "$$MODEL"; then
+          echo "Modelo $$MODEL ja presente. Nada a fazer."
+          exit 0
+        fi
+        echo "Baixando $$MODEL (somente na primeira vez)..."
+        if ollama pull "$$MODEL"; then
+          echo "Modelo $$MODEL pronto."
+        else
+          echo "AVISO: nao foi possivel baixar $$MODEL. A IA funcionara em modo degradado."
+        fi
+        exit 0
+    restart: "no"
+
   postgres:
     image: postgres:16-alpine
     container_name: epass-postgres
@@ -30,19 +99,37 @@ services:
       DATABASE_URL_SYNC: postgresql://epass:epass123@postgres:5432/epass
       JWT_SECRET: local-docker-jwt-secret
       CORS_ORIGINS: '["http://localhost:5173","http://localhost:8081","http://192.168.15.5:8081","exp://192.168.15.5:8081"]'
+      # --- IA local (Atena) ---
+      # A IA e um modulo DECOPLADO: se qualquer um destes valores estiver errado
+      # ou o container do Ollama estiver parado, o SGE continua funcionando.
+      # Todos sao sobrescrevaveis pelo ambiente (ex.: AI_ENABLED=false
+      # docker compose up -d) ou por um .env na raiz.
+      AI_ENABLED: ${AI_ENABLED:-true}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b}
+      OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-120}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-4096}
+      OLLAMA_MAX_CONCURRENCY: ${OLLAMA_MAX_CONCURRENCY:-1}
+      # Desliga o modo raciocinio do Qwen3 (7min39 -> 2s em CPU).
+      OLLAMA_THINK: ${OLLAMA_THINK:-false}
     volumes:
       - ./backend:/app
       - backend_storage:/app/storage
     depends_on:
       postgres:
         condition: service_healthy
+      # service_started (e nunca service_healthy): o backend nao espera a IA.
+      ollama:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 30s
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # timeout-graceful-shutdown evita que conexões SSE (realtime) travem
+    # reloads/restarts do servidor aguardando keep-alive indefinidamente.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --timeout-graceful-shutdown 5
 
   web:
     build:
@@ -52,7 +139,8 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_API_URL: http://localhost:8000/api/v1
+      VITE_API_URL: /api/v1
+      VITE_PROXY_TARGET: http://backend:8000
       VITE_ENV: local
     volumes:
       - ./web:/app
@@ -80,3 +168,7 @@ services:
 volumes:
   postgres_data:
   backend_storage:
+  # Modelos do Ollama (GGUF). Volume dedicado e nomeado: sobrevive a
+  # `docker compose down` e pode ser inspecionado/removido com segurança via
+  # `docker volume rm epass_ollama_models`.
+  ollama_models:
