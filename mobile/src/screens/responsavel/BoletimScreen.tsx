@@ -1,3 +1,4 @@
+import { KeepAwake } from "../../components/KeepAwake";
 import { useState, useCallback } from "react";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -10,12 +11,14 @@ import {
   ScrollView,
   SafeAreaView,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useSelectedStudent } from "../../hooks/useSelectedStudent";
 import { useReportCard } from "../../hooks/useReportCard";
 import { ErrorState } from "../../components/ErrorState";
 import type { ResponsavelStackParamList } from "../../types/navigation";
 import type { SituacaoAluno } from "../../types";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type NavProp = NativeStackNavigationProp<ResponsavelStackParamList, "Boletim">;
 
@@ -42,6 +45,8 @@ function formatMedia(value: number | string): string {
 }
 
 export function BoletimScreen() {
+  useThemeVersion();
+
   const navigation = useNavigation<NavProp>();
   const { selectedChild } = useSelectedStudent();
   const [bimestre, setBimestre] = useState(1);
@@ -68,7 +73,7 @@ export function BoletimScreen() {
               accessibilityLabel="Voltar"
               accessibilityRole="button"
             >
-              <Ionicons name="chevron-back" size={28} color="#1F1F1F" />
+              <ThemedIcon name="chevron-back" size={28} color="#1F1F1F" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Boletim</Text>
             <View style={{ width: 28 }} />
@@ -89,10 +94,12 @@ export function BoletimScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Evita a tela apagar durante a leitura. */}
+      <KeepAwake />
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={28} color="#1F1F1F" />
+            <ThemedIcon name="chevron-back" size={28} color="#1F1F1F" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Boletim</Text>
           <View style={{ width: 28 }} />
@@ -150,10 +157,10 @@ export function BoletimScreen() {
           <ErrorState message={error} onRetry={refetch} />
         ) : !reportCard || reportCard.disciplinas.length === 0 ? (
           <View style={styles.center}>
-            <Ionicons name="document-text-outline" size={56} color="#D0D0D0" />
-            <Text style={styles.emptyTitle}>Nenhuma disciplina</Text>
+            <ThemedIcon name="document-text-outline" size={56} color="#D0D0D0" />
+            <Text style={styles.emptyTitle}>Boletim não disponível</Text>
             <Text style={styles.emptySubtitle}>
-              Nenhuma nota lançada para este bimestre.
+              As notas deste bimestre ainda não foram liberadas pelo professor.
             </Text>
           </View>
         ) : (
@@ -228,7 +235,7 @@ export function BoletimScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",

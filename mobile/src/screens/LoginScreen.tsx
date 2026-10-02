@@ -13,8 +13,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
+import { createThemedStyles } from "../theme/useThemedStyles";
+import { useThemeVersion } from "../theme/useThemeVersion";
+import { ThemedIcon } from "../theme/ThemedIcon";
 
 function getErrorMessage(err: unknown): string {
   if (err && typeof err === "object" && "response" in err) {
@@ -29,6 +31,8 @@ function getErrorMessage(err: unknown): string {
 }
 
 export function LoginScreen() {
+  useThemeVersion();
+
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -124,7 +128,7 @@ export function LoginScreen() {
                     accessibilityLabel={showPassword ? "Esconder senha" : "Mostrar senha"}
                     accessibilityRole="button"
                   >
-                    <Ionicons
+                    <ThemedIcon
                       name={showPassword ? "eye-off" : "eye"}
                       size={22}
                       color="#A0A0A0"
@@ -173,7 +177,7 @@ export function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   gradient: {
     flex: 1,
   },

@@ -11,11 +11,13 @@ import {
   SafeAreaView,
   RefreshControl,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useStatement } from "../../hooks/useWallet";
 import { ErrorState } from "../../components/ErrorState";
 import type { MovimentacaoItem } from "../../api/financial.service";
 import type { ResponsavelStackParamList } from "../../types/navigation";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type NavProp = NativeStackNavigationProp<ResponsavelStackParamList, "Statement">;
 
@@ -39,13 +41,13 @@ function formatTime(dateStr: string): string {
 function MovementIcon({ tipo }: { tipo: string }) {
   switch (tipo) {
     case "recarga":
-      return <Ionicons name="add-circle" size={24} color="#4CAF50" />;
+      return <ThemedIcon name="add-circle" size={24} color="#4CAF50" />;
     case "consumo":
-      return <Ionicons name="remove-circle" size={24} color="#FF5B8F" />;
+      return <ThemedIcon name="remove-circle" size={24} color="#FF5B8F" />;
     case "estorno":
-      return <Ionicons name="refresh-circle" size={24} color="#FF9800" />;
+      return <ThemedIcon name="refresh-circle" size={24} color="#FF9800" />;
     default:
-      return <Ionicons name="ellipse" size={24} color="#C7C7C7" />;
+      return <ThemedIcon name="ellipse" size={24} color="#C7C7C7" />;
   }
 }
 
@@ -84,8 +86,11 @@ function MovementRow({ item }: { item: MovimentacaoItem }) {
 }
 
 export function StatementScreen() {
+  useThemeVersion();
+
   const navigation = useNavigation<NavProp>();
-  const { extrato, loading, error, refetch } = useStatement();
+  const { movimentacoes, loading, loadingMore, error, hasMore, refetch, loadMore } =
+    useStatement();
 
   useFocusEffect(
     useCallback(() => {
@@ -102,7 +107,7 @@ export function StatementScreen() {
             accessibilityLabel="Voltar"
             accessibilityRole="button"
           >
-            <Ionicons name="chevron-back" size={28} color="#1F1F1F" />
+            <ThemedIcon name="chevron-back" size={28} color="#1F1F1F" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Extrato</Text>
           <View style={{ width: 28 }} />
@@ -116,7 +121,7 @@ export function StatementScreen() {
           <ErrorState message={error} onRetry={refetch} />
         ) : (
           <FlatList
-            data={extrato?.movimentacoes ?? []}
+            data={movimentacoes}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => <MovementRow item={item} />}
             contentContainerStyle={styles.list}
@@ -127,9 +132,20 @@ export function StatementScreen() {
                 tintColor="#FF5B8F"
               />
             }
+            onEndReachedThreshold={0.3}
+            onEndReached={() => {
+              if (hasMore) void loadMore();
+            }}
+            ListFooterComponent={
+              loadingMore ? (
+                <View style={styles.footerLoading}>
+                  <ActivityIndicator color="#FF5B8F" />
+                </View>
+              ) : null
+            }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Ionicons name="wallet-outline" size={48} color="#C7C7C7" />
+                <ThemedIcon name="wallet-outline" size={48} color="#C7C7C7" />
                 <Text style={styles.emptyText}>Nenhuma movimentação</Text>
               </View>
             }
@@ -140,7 +156,7 @@ export function StatementScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",
@@ -203,6 +219,10 @@ const styles = StyleSheet.create({
   movementAmount: {
     fontSize: 16,
     fontWeight: "700",
+  },
+  footerLoading: {
+    paddingVertical: 16,
+    alignItems: "center",
   },
   emptyContainer: {
     alignItems: "center",

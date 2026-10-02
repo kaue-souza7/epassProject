@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "../../api/errors";
 import { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -7,23 +8,28 @@ import {
   FlatList,
   SafeAreaView,
   ActivityIndicator,
-  Alert,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { format, parseISO } from "date-fns";
 import { getTurmaAlunos, saveFrequencia, type ProfessorAluno } from "../../api/teacher.service";
 import { listCalls, getCall } from "../../api/attendance.service";
 import { ErrorState } from "../../components/ErrorState";
+import { useToast } from "../../components/Toast";
 import type { ProfessorStackParamList } from "../../types/navigation";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type ScreenRoute = RouteProp<ProfessorStackParamList, "LancarFrequencia">;
 
 type AlunoEstado = ProfessorAluno & { presente: boolean };
 
 export function LancarFrequenciaScreen() {
+  useThemeVersion();
+
   const navigation = useNavigation();
   const route = useRoute<ScreenRoute>();
+  const toast = useToast();
   const { turmaNome, disciplinaNome, turmaId, alocacaoId } = route.params;
 
   const today = format(new Date(), "yyyy-MM-dd");
@@ -62,7 +68,7 @@ export function LancarFrequenciaScreen() {
         setAlunos(alunosData.map((a) => ({ ...a, presente: true })));
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao carregar dados";
+      const msg = getApiErrorMessage(err, "Erro ao carregar dados");
       setError(msg);
     } finally {
       setLoading(false);
@@ -96,12 +102,11 @@ export function LancarFrequenciaScreen() {
           presente: a.presente,
         }))
       );
-      Alert.alert("Sucesso", "Frequência salva com sucesso!", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+      toast.success("Frequência salva com sucesso!");
+      setTimeout(() => navigation.goBack(), 900);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao salvar frequência";
-      Alert.alert("Erro", msg);
+      const msg = getApiErrorMessage(err, "Erro ao salvar frequência");
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -139,7 +144,7 @@ export function LancarFrequenciaScreen() {
               accessibilityLabel="Voltar"
               accessibilityRole="button"
             >
-              <Ionicons name="arrow-back" size={24} color="#1F1F1F" />
+              <ThemedIcon name="arrow-back" size={24} color="#1F1F1F" />
             </TouchableOpacity>
             <View style={styles.headerInfo}>
               <Text style={styles.headerTitle}>Lançar Chamada</Text>
@@ -163,7 +168,7 @@ export function LancarFrequenciaScreen() {
             accessibilityLabel="Voltar"
             accessibilityRole="button"
           >
-            <Ionicons name="arrow-back" size={24} color="#1F1F1F" />
+            <ThemedIcon name="arrow-back" size={24} color="#1F1F1F" />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
             <Text style={styles.headerTitle}>Lançar Chamada</Text>
@@ -179,11 +184,11 @@ export function LancarFrequenciaScreen() {
             accessibilityLabel="Dia anterior"
             accessibilityRole="button"
           >
-            <Ionicons name="chevron-back" size={22} color="#FF5B8F" />
+            <ThemedIcon name="chevron-back" size={22} color="#FF5B8F" />
           </TouchableOpacity>
 
           <View style={styles.dateInfo}>
-            <Ionicons name="calendar-outline" size={18} color="#FF5B8F" />
+            <ThemedIcon name="calendar-outline" size={18} color="#FF5B8F" />
             <Text style={styles.dateText}>
               {format(parseISO(selectedDate), "dd/MM/yyyy")}
             </Text>
@@ -194,7 +199,7 @@ export function LancarFrequenciaScreen() {
             accessibilityLabel="Próximo dia"
             accessibilityRole="button"
           >
-            <Ionicons name="chevron-forward" size={22} color="#FF5B8F" />
+            <ThemedIcon name="chevron-forward" size={22} color="#FF5B8F" />
           </TouchableOpacity>
         </View>
 
@@ -213,7 +218,7 @@ export function LancarFrequenciaScreen() {
             accessibilityLabel="Marcar todos como presente"
             accessibilityRole="button"
           >
-            <Ionicons name="checkmark-done" size={18} color="#FF5B8F" />
+            <ThemedIcon name="checkmark-done" size={18} color="#FF5B8F" />
             <Text style={styles.marcarTodosText}>Todos</Text>
           </TouchableOpacity>
         </View>
@@ -246,7 +251,7 @@ export function LancarFrequenciaScreen() {
                   item.presente ? styles.statusPresente : styles.statusFalta,
                 ]}
               >
-                <Ionicons
+                <ThemedIcon
                   name={item.presente ? "checkmark" : "close"}
                   size={16}
                   color={item.presente ? "#FFF" : "#FFF"}
@@ -272,7 +277,7 @@ export function LancarFrequenciaScreen() {
               <ActivityIndicator color="#FFF" size="small" />
             ) : (
               <>
-                <Ionicons name="save-outline" size={20} color="#FFF" />
+                <ThemedIcon name="save-outline" size={20} color="#FFF" />
                 <Text style={styles.saveButtonText}>Salvar Frequência</Text>
               </>
             )}
@@ -283,7 +288,7 @@ export function LancarFrequenciaScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",

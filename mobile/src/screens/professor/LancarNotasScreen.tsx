@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "../../api/errors";
 import { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -12,7 +13,6 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
@@ -24,15 +24,22 @@ import {
   type ProfessorAvaliacao,
 } from "../../api/teacher.service";
 import { ErrorState } from "../../components/ErrorState";
+import { useToast } from "../../components/Toast";
 import type { ProfessorStackParamList } from "../../types/navigation";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type ScreenRoute = RouteProp<ProfessorStackParamList, "LancarNotas">;
 
 type AlunoNota = ProfessorAluno & { valor: string };
 
 export function LancarNotasScreen() {
+  useThemeVersion();
+
   const navigation = useNavigation<NativeStackNavigationProp<ProfessorStackParamList>>();
   const route = useRoute<ScreenRoute>();
+  const toast = useToast();
   const { turmaNome, disciplinaNome, turmaId, alocacaoId } = route.params;
 
   const [avaliacoes, setAvaliacoes] = useState<ProfessorAvaliacao[]>([]);
@@ -59,7 +66,7 @@ export function LancarNotasScreen() {
         setSelectedAvaliacaoId(avals[0].id);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao carregar dados";
+      const msg = getApiErrorMessage(err, "Erro ao carregar dados");
       setError(msg);
     } finally {
       setLoadingAvaliacoes(false);
@@ -123,7 +130,7 @@ export function LancarNotasScreen() {
 
   const handleSave = async () => {
     if (!selectedAvaliacaoId) {
-      Alert.alert("Aviso", "Selecione uma avaliação");
+      toast.warning("Selecione uma avaliação");
       return;
     }
 
@@ -156,12 +163,11 @@ export function LancarNotasScreen() {
           valor: a.valor === "" ? 0 : parseFloat(a.valor),
         }))
       );
-      Alert.alert("Sucesso", "Notas salvas com sucesso!", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+      toast.success("Notas salvas com sucesso!");
+      setTimeout(() => navigation.goBack(), 900);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao salvar notas";
-      Alert.alert("Erro", msg);
+      const msg = getApiErrorMessage(err, "Erro ao salvar notas");
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -179,7 +185,7 @@ export function LancarNotasScreen() {
               accessibilityLabel="Voltar"
               accessibilityRole="button"
             >
-              <Ionicons name="arrow-back" size={24} color="#1F1F1F" />
+              <ThemedIcon name="arrow-back" size={24} color="#1F1F1F" />
             </TouchableOpacity>
             <View style={styles.headerInfo}>
               <Text style={styles.headerTitle}>Lançar Notas</Text>
@@ -207,7 +213,7 @@ export function LancarNotasScreen() {
               accessibilityLabel="Voltar"
               accessibilityRole="button"
             >
-              <Ionicons name="arrow-back" size={24} color="#1F1F1F" />
+              <ThemedIcon name="arrow-back" size={24} color="#1F1F1F" />
             </TouchableOpacity>
             <View style={styles.headerInfo}>
               <Text style={styles.headerTitle}>Lançar Notas</Text>
@@ -319,7 +325,7 @@ export function LancarNotasScreen() {
                     <ActivityIndicator color="#FFF" size="small" />
                   ) : (
                     <>
-                      <Ionicons name="save-outline" size={20} color="#FFF" />
+                      <ThemedIcon name="save-outline" size={20} color="#FFF" />
                       <Text style={styles.saveButtonText}>Salvar Notas</Text>
                     </>
                   )}
@@ -333,7 +339,7 @@ export function LancarNotasScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",

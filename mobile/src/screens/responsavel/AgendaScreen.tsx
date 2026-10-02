@@ -11,11 +11,13 @@ import {
   SafeAreaView,
   RefreshControl,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useEvents } from "../../hooks/useAgenda";
 import { ErrorState } from "../../components/ErrorState";
 import type { AgendaEvent } from "../../types/responsavel";
 import type { ResponsavelStackParamList } from "../../types/navigation";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type NavProp = NativeStackNavigationProp<ResponsavelStackParamList, "Agenda">;
 
@@ -46,7 +48,7 @@ function EventCard({ item }: { item: AgendaEvent }) {
   return (
     <View style={styles.eventCard}>
       <View style={styles.eventIcon}>
-        <Ionicons name="calendar-outline" size={22} color="#FF5B8F" />
+        <ThemedIcon name="calendar-outline" size={22} color="#FF5B8F" />
       </View>
       <View style={styles.eventInfo}>
         <Text style={styles.eventTitle}>{item.titulo}</Text>
@@ -62,6 +64,8 @@ function EventCard({ item }: { item: AgendaEvent }) {
 }
 
 export function AgendaScreen() {
+  useThemeVersion();
+
   const navigation = useNavigation<NavProp>();
   const { events, loading, error, refetch } = useEvents({ size: PAGE_SIZE });
   const [refreshing, setRefreshing] = useState(false);
@@ -81,7 +85,7 @@ export function AgendaScreen() {
             accessibilityLabel="Voltar"
             accessibilityRole="button"
           >
-            <Ionicons name="chevron-back" size={28} color="#1F1F1F" />
+            <ThemedIcon name="chevron-back" size={28} color="#1F1F1F" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Agenda</Text>
           <View style={{ width: 28 }} />
@@ -108,7 +112,7 @@ export function AgendaScreen() {
             }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Ionicons name="calendar-outline" size={48} color="#C7C7C7" />
+                <ThemedIcon name="calendar-outline" size={48} color="#C7C7C7" />
                 <Text style={styles.emptyText}>Nenhum evento</Text>
               </View>
             }
@@ -119,7 +123,7 @@ export function AgendaScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",

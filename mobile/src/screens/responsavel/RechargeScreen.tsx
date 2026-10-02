@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
@@ -9,46 +9,58 @@ import {
   StyleSheet,
   ActivityIndicator,
   SafeAreaView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useRecharge } from "../../hooks/useWallet";
+import { getApiErrorMessage } from "../../api/errors";
+import { useToast } from "../../components/Toast";
 import type { ResponsavelStackParamList } from "../../types/navigation";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type NavProp = NativeStackNavigationProp<ResponsavelStackParamList, "Recharge">;
 
 const QUICK_VALUES = [10, 20, 50, 100];
 
+function novaChaveIdempotencia(): string {
+  return `recarga-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function RechargeScreen() {
+  useThemeVersion();
+
   const navigation = useNavigation<NavProp>();
+  const toast = useToast();
   const { realizarRecarga, loading } = useRecharge();
   const [amount, setAmount] = useState("");
+  // Reutilizada em retentativas do mesmo formulário: evita dupla cobrança
+  // quando o usuário toca duas vezes ou a requisição é reenviada.
+  const idempotencyKeyRef = useRef(novaChaveIdempotencia());
 
   const numericAmount = parseFloat(amount.replace(",", "."));
 
   const handleQuickAmount = (value: number) => {
-    setAmount(value.toFixed(2));
+    setAmount(value.toFixed(2).replace(".", ","));
   };
 
   const handleConfirm = async () => {
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      Alert.alert("Valor inválido", "Informe um valor maior que zero.");
+    const valorArredondado = Math.round(numericAmount * 100) / 100;
+    if (isNaN(valorArredondado) || valorArredondado <= 0) {
+      toast.warning("Informe um valor maior que zero.");
       return;
     }
 
     try {
-      await realizarRecarga(numericAmount);
-      Alert.alert("Recarga realizada", `Foram adicionados R$ ${numericAmount.toFixed(2)} à carteira.`, [
-        {
-          text: "OK",
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      await realizarRecarga(valorArredondado, idempotencyKeyRef.current);
+      idempotencyKeyRef.current = novaChaveIdempotencia();
+      toast.success(
+        `Foram adicionados R$ ${valorArredondado.toFixed(2)} à carteira.`,
+      );
+      setTimeout(() => navigation.goBack(), 1100);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erro ao realizar recarga";
-      Alert.alert("Erro", message);
+      toast.error(getApiErrorMessage(err, "Erro ao realizar recarga"));
     }
   };
 
@@ -65,7 +77,7 @@ export function RechargeScreen() {
               accessibilityLabel="Voltar"
               accessibilityRole="button"
             >
-              <Ionicons name="chevron-back" size={28} color="#1F1F1F" />
+              <ThemedIcon name="chevron-back" size={28} color="#1F1F1F" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Recarregar</Text>
             <View style={{ width: 28 }} />
@@ -133,7 +145,7 @@ export function RechargeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",

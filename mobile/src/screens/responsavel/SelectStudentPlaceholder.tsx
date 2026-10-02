@@ -11,12 +11,14 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import { useDashboard } from "../../hooks/useDashboard";
 import { useSelectedStudent } from "../../hooks/useSelectedStudent";
 import type { ResponsavelStackParamList } from "../../types/navigation";
 import type { Child } from "../../types/responsavel";
 import type { SituacaoAluno } from "../../types";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type NavProp = NativeStackNavigationProp<ResponsavelStackParamList, "SelectStudent">;
 
@@ -37,13 +39,15 @@ const SITUACAO_COLORS: Record<SituacaoAluno, string> = {
 };
 
 export function SelectStudentPlaceholder() {
+  useThemeVersion();
+
   const navigation = useNavigation<NavProp>();
   const { data, loading, error, refetch } = useDashboard();
   const { selectChild } = useSelectedStudent();
   const autoSelected = useRef(false);
 
   useEffect(() => {
-    if (data?.filhos.length === 1 && !autoSelected.current) {
+    if (data?.filhos.length && !autoSelected.current) {
       autoSelected.current = true;
       selectChild(data.filhos[0]);
       navigation.replace("HomeTabs");
@@ -68,12 +72,12 @@ export function SelectStudentPlaceholder() {
       <LinearGradient colors={["#F84F8D", "#FF8664"]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={styles.gradient}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.center}>
-            <Ionicons name="alert-circle-outline" size={56} color="white" />
+            <ThemedIcon name="alert-circle-outline" size={56} color="white" />
             <Text style={styles.statusText}>
               Não foi possível carregar seus alunos.
             </Text>
             <TouchableOpacity style={styles.retryButton} onPress={refetch}>
-              <Ionicons name="refresh" size={18} color="white" />
+              <ThemedIcon name="refresh" size={18} color="white" />
               <Text style={styles.retryText}>Tentar novamente</Text>
             </TouchableOpacity>
           </View>
@@ -89,7 +93,7 @@ export function SelectStudentPlaceholder() {
       <LinearGradient colors={["#F84F8D", "#FF8664"]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={styles.gradient}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.center}>
-            <Ionicons name="people-outline" size={56} color="white" />
+            <ThemedIcon name="people-outline" size={56} color="white" />
             <Text style={styles.statusText}>
               Nenhum aluno encontrado para este responsável.
             </Text>
@@ -116,7 +120,7 @@ export function SelectStudentPlaceholder() {
               child={item}
               onPress={() => {
                 selectChild(item);
-                navigation.navigate("HomeTabs");
+                navigation.replace("HomeTabs");
               }}
             />
           )}
@@ -152,7 +156,7 @@ function ChildCard({ child, onPress }: { child: Child; onPress: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   gradient: {
     flex: 1,
   },

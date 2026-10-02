@@ -13,10 +13,58 @@ import { Ionicons } from "@expo/vector-icons";
 import { useWallet } from "../../hooks/useWallet";
 import { ErrorState } from "../../components/ErrorState";
 import type { ResponsavelStackParamList } from "../../types/navigation";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type NavProp = NativeStackNavigationProp<ResponsavelStackParamList, "Wallet">;
 
+interface FeatureItem {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  color: string;
+  bgColor: string;
+  route?: keyof ResponsavelStackParamList;
+  available: boolean;
+}
+
+const FEATURES: FeatureItem[] = [
+  {
+    icon: "cart-outline",
+    label: "Cantina",
+    color: "#FF9800",
+    bgColor: "#FFF3E0",
+    route: "Cantina",
+    available: true,
+  },
+  {
+    icon: "list-outline",
+    label: "Extrato",
+    color: "#FF5B8F",
+    bgColor: "#FFF0F3",
+    route: "Statement",
+    available: true,
+  },
+  {
+    icon: "add-circle-outline",
+    label: "Recarregar",
+    color: "#4CAF50",
+    bgColor: "#E8F5E9",
+    route: "Recharge",
+    available: true,
+  },
+  {
+    icon: "time-outline",
+    label: "Histórico",
+    color: "#9C27B0",
+    bgColor: "#F3E5F5",
+    available: false,
+  },
+];
+
 export function WalletScreen() {
+  useThemeVersion();
+
   const navigation = useNavigation<NavProp>();
   const { saldo, ultimaMovimentacao, loading, error, refetch } = useWallet();
 
@@ -25,6 +73,11 @@ export function WalletScreen() {
       refetch();
     }, [refetch])
   );
+
+  const handleFeaturePress = (item: FeatureItem) => {
+    if (!item.available || !item.route) return;
+    navigation.navigate(item.route as never);
+  };
 
   return (
     <View style={styles.container}>
@@ -35,7 +88,7 @@ export function WalletScreen() {
             accessibilityLabel="Voltar"
             accessibilityRole="button"
           >
-            <Ionicons name="chevron-back" size={28} color="#1F1F1F" />
+            <ThemedIcon name="chevron-back" size={28} color="#1F1F1F" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Carteira</Text>
           <View style={{ width: 28 }} />
@@ -59,30 +112,43 @@ export function WalletScreen() {
               </Text>
             </View>
 
-            <View style={styles.actionsRow}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => navigation.navigate("Statement")}
-                accessibilityLabel="Ver extrato financeiro"
-                accessibilityRole="button"
-              >
-                <View style={[styles.actionIcon, { backgroundColor: "#FFF0F3" }]}>
-                  <Ionicons name="list-outline" size={24} color="#FF5B8F" />
-                </View>
-                <Text style={styles.actionLabel}>Extrato</Text>
-              </TouchableOpacity>
+            <Text style={styles.sectionTitle}>Funcionalidades</Text>
 
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => navigation.navigate("Recharge")}
-                accessibilityLabel="Fazer recarga"
-                accessibilityRole="button"
-              >
-                <View style={[styles.actionIcon, { backgroundColor: "#E8F5E9" }]}>
-                  <Ionicons name="add-circle-outline" size={24} color="#4CAF50" />
-                </View>
-                <Text style={styles.actionLabel}>Recarregar</Text>
-              </TouchableOpacity>
+            <View style={styles.featuresGrid}>
+              {FEATURES.map((item) => (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[
+                    styles.featureCard,
+                    !item.available && styles.featureCardDisabled,
+                  ]}
+                  onPress={() => handleFeaturePress(item)}
+                  activeOpacity={item.available ? 0.7 : 1}
+                  accessibilityLabel={item.label}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: !item.available }}
+                >
+                  <View
+                    style={[
+                      styles.featureIcon,
+                      { backgroundColor: item.bgColor },
+                    ]}
+                  >
+                    <ThemedIcon name={item.icon} size={24} color={item.color} />
+                  </View>
+                  <Text
+                    style={[
+                      styles.featureLabel,
+                      !item.available && styles.featureLabelDisabled,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                  {!item.available && (
+                    <Text style={styles.comingSoon}>Em breve</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         )}
@@ -91,7 +157,7 @@ export function WalletScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",
@@ -146,18 +212,28 @@ const styles = StyleSheet.create({
     color: "#C7C7C7",
     fontWeight: "500",
   },
-  actionsRow: {
-    flexDirection: "row",
-    gap: 16,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F1F1F",
+    marginBottom: 16,
   },
-  actionButton: {
-    flex: 1,
+  featuresGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  featureCard: {
+    width: "48%",
     backgroundColor: "white",
     borderRadius: 24,
-    padding: 24,
+    padding: 20,
     alignItems: "center",
   },
-  actionIcon: {
+  featureCardDisabled: {
+    opacity: 0.6,
+  },
+  featureIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -165,9 +241,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  actionLabel: {
-    fontSize: 16,
+  featureLabel: {
+    fontSize: 15,
     fontWeight: "600",
     color: "#1F1F1F",
+  },
+  featureLabelDisabled: {
+    color: "#999",
+  },
+  comingSoon: {
+    fontSize: 12,
+    color: "#C7C7C7",
+    fontWeight: "500",
+    marginTop: 4,
   },
 });

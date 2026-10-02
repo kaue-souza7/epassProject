@@ -9,19 +9,23 @@ import {
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDashboard } from "../../hooks/useDashboard";
+import { useNotificacoesNaoLidas } from "../../hooks/useCommunication";
 import { useSelectedStudent } from "../../hooks/useSelectedStudent";
+import { AnimatedTabBar, type AnimatedTab } from "../../navigation/AnimatedTabBar";
 import { HomeScreen } from "./HomeScreen";
 import { RelatoriosScreen } from "./RelatoriosScreen";
 import { AvisosScreen } from "./AvisosScreen";
 import { PerfilScreen } from "./PerfilScreen";
 import type { Child } from "../../types/responsavel";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type ResponsavelTabParamList = {
   HomeTab: undefined;
   Relatorios: undefined;
-  Avisos: undefined;
+  Avisos: { avisoId?: string } | undefined;
   Perfil: undefined;
 };
 
@@ -102,7 +106,7 @@ function StudentSelector() {
           )}
         </View>
         {hasMultiple && (
-          <Ionicons
+          <ThemedIcon
             name={expanded ? "chevron-up" : "chevron-down"}
             size={20}
             color="#999"
@@ -147,41 +151,31 @@ function StudentSelector() {
 }
 
 function CustomTabBar(props: BottomTabBarProps) {
-  const insets = useSafeAreaInsets();
+  const { total: naoLidas } = useNotificacoesNaoLidas();
 
-  return (
-    <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom + 8 }]}>
-      <StudentSelector />
-      <View style={styles.tabBar}>
-        {props.state.routes.map((route, index) => {
-          const focused = index === props.state.index;
-          const color = focused ? "#FF5B8F" : "#B0B0B0";
-          return (
-            <TouchableOpacity
-              key={route.key}
-              style={styles.tabItem}
-              onPress={() => props.navigation.navigate(route.name)}
-              activeOpacity={0.7}
-              accessibilityLabel={TAB_LABELS[route.name] ?? route.name}
-              accessibilityRole="tab"
-            >
-              <Ionicons
-                name={TAB_ICONS[route.name] ?? "ellipse"}
-                size={20}
-                color={color}
-              />
-              <Text style={[styles.tabLabel, { color }]}>
-                {TAB_LABELS[route.name] ?? route.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
+  const tabs: Record<string, AnimatedTab> = {
+    HomeTab: { label: TAB_LABELS.HomeTab, icon: TAB_ICONS.HomeTab },
+    Relatorios: { label: TAB_LABELS.Relatorios, icon: TAB_ICONS.Relatorios },
+    Avisos: {
+      label: TAB_LABELS.Avisos,
+      icon: TAB_ICONS.Avisos,
+      badge: naoLidas > 0 ? naoLidas : undefined,
+    },
+    Perfil: { label: TAB_LABELS.Perfil, icon: TAB_ICONS.Perfil },
+  };
+
+  // O seletor de aluno não pertence ao perfil da conta: ele só faz sentido nas
+  // abas de conteúdo do aluno. Além disso, a lista expansível sobrepunha o
+  // cartão de perfil ao ser aberta.
+  const rotaAtiva = props.state.routes[props.state.index]?.name;
+  const header = rotaAtiva === "Perfil" ? undefined : <StudentSelector />;
+
+  return <AnimatedTabBar {...props} tabs={tabs} header={header} />;
 }
 
 export function ResponsavelTabNavigator() {
+  useThemeVersion();
+
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
@@ -197,36 +191,7 @@ export function ResponsavelTabNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
-  tabBarContainer: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    bottom: 0,
-  },
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: "white",
-    borderRadius: 48,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 4,
-    gap: 2,
-  },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-  },
+const styles = createThemedStyles({
   selectorOuter: {
     marginBottom: 8,
   },

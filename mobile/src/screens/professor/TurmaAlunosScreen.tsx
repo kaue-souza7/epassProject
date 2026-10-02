@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "../../api/errors";
 import { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -8,17 +9,21 @@ import {
   SafeAreaView,
   ActivityIndicator,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { getTurmaAlunos, type ProfessorAluno } from "../../api/teacher.service";
 import { ErrorState } from "../../components/ErrorState";
 import type { ProfessorStackParamList } from "../../types/navigation";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type NavProp = NativeStackNavigationProp<ProfessorStackParamList, "TurmaAlunos">;
 type ScreenRoute = RouteProp<ProfessorStackParamList, "TurmaAlunos">;
 
 export function TurmaAlunosScreen() {
+  useThemeVersion();
+
   const navigation = useNavigation<NavProp>();
   const route = useRoute<ScreenRoute>();
   const { turmaNome, disciplinaNome } = route.params;
@@ -34,7 +39,7 @@ export function TurmaAlunosScreen() {
       const data = await getTurmaAlunos(route.params.turmaId);
       setAlunos(data);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao carregar alunos";
+      const msg = getApiErrorMessage(err, "Erro ao carregar alunos");
       setError(msg);
     } finally {
       setLoading(false);
@@ -67,7 +72,7 @@ export function TurmaAlunosScreen() {
               accessibilityLabel="Voltar"
               accessibilityRole="button"
             >
-              <Ionicons name="arrow-back" size={24} color="#1F1F1F" />
+              <ThemedIcon name="arrow-back" size={24} color="#1F1F1F" />
             </TouchableOpacity>
             <View style={styles.headerInfo}>
               <Text style={styles.headerTitle}>{turmaNome}</Text>
@@ -89,7 +94,7 @@ export function TurmaAlunosScreen() {
             accessibilityLabel="Voltar"
             accessibilityRole="button"
           >
-            <Ionicons name="arrow-back" size={24} color="#1F1F1F" />
+            <ThemedIcon name="arrow-back" size={24} color="#1F1F1F" />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
             <Text style={styles.headerTitle}>{turmaNome}</Text>
@@ -122,7 +127,7 @@ export function TurmaAlunosScreen() {
           )}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="people-outline" size={48} color="#D0D0D0" />
+              <ThemedIcon name="people-outline" size={48} color="#D0D0D0" />
               <Text style={styles.emptyText}>Nenhum aluno encontrado</Text>
             </View>
           }
@@ -132,7 +137,7 @@ export function TurmaAlunosScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",

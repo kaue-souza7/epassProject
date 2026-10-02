@@ -1,3 +1,5 @@
+import { KeepAwake } from "../../components/KeepAwake";
+import { getApiErrorMessage } from "../../api/errors";
 import { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -9,8 +11,6 @@ import {
   SafeAreaView,
   Share,
   Modal,
-  Alert,
-  Animated,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
@@ -21,9 +21,13 @@ import * as WebBrowser from "expo-web-browser";
 import { Ionicons } from "@expo/vector-icons";
 import { useSelectedStudent } from "../../hooks/useSelectedStudent";
 import { ErrorState } from "../../components/ErrorState";
+import { useToast } from "../../components/Toast";
 import { REPORT_ITEMS, generatePdf } from "../../api/report.service";
 import type { ReportType, DocumentPdf } from "../../types/responsavel";
 import type { ResponsavelStackParamList } from "../../types/navigation";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 const FAVORITES_KEY = "@epass/favorite_reports";
 
@@ -48,7 +52,10 @@ function SkeletonCard() {
 const DISABLED_IDS: ReportType[] = ["comprovante_pagamento", "extrato_financeiro"];
 
 export function RelatoriosScreen() {
+  useThemeVersion();
+
   const navigation = useNavigation<NavigationProp<ResponsavelStackParamList>>();
+  const toast = useToast();
   const { selectedChild } = useSelectedStudent();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +145,7 @@ export function RelatoriosScreen() {
       setModalVisible(true);
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Erro ao gerar documento";
+        getApiErrorMessage(err, "Erro ao gerar documento");
       setError(message);
     } finally {
       setActionLoading(false);
@@ -150,7 +157,7 @@ export function RelatoriosScreen() {
     try {
       await WebBrowser.openBrowserAsync(url);
     } catch {
-      Alert.alert("Erro", "Não foi possível abrir o documento");
+      toast.error("Não foi possível abrir o documento");
     }
   };
 
@@ -179,10 +186,10 @@ export function RelatoriosScreen() {
 
   const handleDownload = async (pdf: DocumentPdf) => {
     try {
-      const file = await File.downloadFileAsync(pdf.url, Paths.document);
-      Alert.alert("Download concluído", `Arquivo salvo em:\n${file.uri}`);
+      await File.downloadFileAsync(pdf.url, Paths.document);
+      toast.success("Download concluído");
     } catch {
-      Alert.alert("Erro", "Não foi possível baixar o documento");
+      toast.error("Não foi possível baixar o documento");
     }
   };
 
@@ -232,6 +239,8 @@ export function RelatoriosScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Evita a tela apagar durante a leitura. */}
+      <KeepAwake />
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Relatórios</Text>
@@ -239,7 +248,7 @@ export function RelatoriosScreen() {
 
         {!selectedChild ? (
           <View style={styles.center}>
-            <Ionicons name="people-outline" size={56} color="#D0D0D0" />
+            <ThemedIcon name="people-outline" size={56} color="#D0D0D0" />
             <Text style={styles.emptyTitle}>Nenhum aluno selecionado</Text>
             <Text style={styles.emptySubtitle}>
               Selecione um aluno no menu superior para ver os relatórios.
@@ -293,7 +302,7 @@ export function RelatoriosScreen() {
                     >
                       <View style={styles.reportCardLeft}>
                         <View style={[styles.reportIcon, isDisabled && styles.reportIconDisabled]}>
-                          <Ionicons
+                          <ThemedIcon
                             name={item.icon as keyof typeof Ionicons.glyphMap}
                             size={22}
                             color={isDisabled ? "#C7C7C7" : "#FF5B8F"}
@@ -327,13 +336,13 @@ export function RelatoriosScreen() {
                               }
                               accessibilityRole="button"
                             >
-                              <Ionicons
+                              <ThemedIcon
                                 name={isFav ? "star" : "star-outline"}
                                 size={20}
                                 color={isFav ? "#FFB800" : "#C7C7C7"}
                               />
                             </TouchableOpacity>
-                            <Ionicons
+                            <ThemedIcon
                               name="chevron-forward"
                               size={18}
                               color="#D0D0D0"
@@ -365,7 +374,7 @@ export function RelatoriosScreen() {
               <>
                 <View style={styles.modalHeader}>
                   <View style={styles.modalIcon}>
-                    <Ionicons
+                    <ThemedIcon
                       name={
                         selectedDoc.item.icon as keyof typeof Ionicons.glyphMap
                       }
@@ -382,7 +391,7 @@ export function RelatoriosScreen() {
                     accessibilityLabel="Fechar"
                     accessibilityRole="button"
                   >
-                    <Ionicons name="close" size={24} color="#666" />
+                    <ThemedIcon name="close" size={24} color="#666" />
                   </TouchableOpacity>
                 </View>
 
@@ -405,7 +414,7 @@ export function RelatoriosScreen() {
                       accessibilityLabel="Visualizar documento"
                       accessibilityRole="button"
                     >
-                      <Ionicons name="eye" size={22} color="#FF5B8F" />
+                      <ThemedIcon name="eye" size={22} color="#FF5B8F" />
                       <Text style={styles.actionButtonText}>Visualizar</Text>
                     </TouchableOpacity>
 
@@ -415,7 +424,7 @@ export function RelatoriosScreen() {
                       accessibilityLabel="Compartilhar documento"
                       accessibilityRole="button"
                     >
-                      <Ionicons name="share-outline" size={22} color="#FF5B8F" />
+                      <ThemedIcon name="share-outline" size={22} color="#FF5B8F" />
                       <Text style={styles.actionButtonText}>Compartilhar</Text>
                     </TouchableOpacity>
 
@@ -425,7 +434,7 @@ export function RelatoriosScreen() {
                       accessibilityLabel="Baixar documento"
                       accessibilityRole="button"
                     >
-                      <Ionicons name="download-outline" size={22} color="#FF5B8F" />
+                      <ThemedIcon name="download-outline" size={22} color="#FF5B8F" />
                       <Text style={styles.actionButtonText}>Download</Text>
                     </TouchableOpacity>
 
@@ -441,7 +450,7 @@ export function RelatoriosScreen() {
                       }
                       accessibilityRole="button"
                     >
-                      <Ionicons
+                      <ThemedIcon
                         name={
                           favorites.includes(selectedDoc!.item.id)
                             ? "star"
@@ -489,7 +498,7 @@ export function RelatoriosScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",

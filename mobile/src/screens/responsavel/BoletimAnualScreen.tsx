@@ -1,3 +1,4 @@
+import { KeepAwake } from "../../components/KeepAwake";
 import { useState, useCallback } from "react";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -10,12 +11,14 @@ import {
   ScrollView,
   SafeAreaView,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useSelectedStudent } from "../../hooks/useSelectedStudent";
 import { useAnnualReport } from "../../hooks/useReportCard";
 import { ErrorState } from "../../components/ErrorState";
 import type { ResponsavelStackParamList } from "../../types/navigation";
 import type { SituacaoAluno } from "../../types";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type NavProp = NativeStackNavigationProp<ResponsavelStackParamList, "BoletimAnual">;
 
@@ -40,7 +43,14 @@ function formatMedia(value: number | string | null): string {
   return Number(value).toFixed(1);
 }
 
-function SituacaoBadge({ situacao }: { situacao: SituacaoAluno }) {
+function SituacaoBadge({ situacao }: { situacao: SituacaoAluno | null }) {
+  if (!situacao) {
+    return (
+      <View style={styles.situacaoBadgeNaoLiberada}>
+        <Text style={styles.situacaoBadgeNaoLiberadaText}>Não liberado</Text>
+      </View>
+    );
+  }
   return (
     <View style={[styles.situacaoBadge, { backgroundColor: SITUACAO_COLORS[situacao] }]}>
       <Text style={styles.situacaoBadgeText}>{SITUACAO_LABELS[situacao]}</Text>
@@ -120,7 +130,7 @@ function BimestreSection({
         accessibilityRole="button"
       >
         <View style={styles.bimestreHeaderLeft}>
-          <Ionicons
+          <ThemedIcon
             name={expanded ? "chevron-down" : "chevron-forward"}
             size={18}
             color="#FF5B8F"
@@ -141,6 +151,8 @@ function BimestreSection({
 }
 
 export function BoletimAnualScreen() {
+  useThemeVersion();
+
   const navigation = useNavigation<NavProp>();
   const { selectedChild } = useSelectedStudent();
 
@@ -163,7 +175,7 @@ export function BoletimAnualScreen() {
               accessibilityLabel="Voltar"
               accessibilityRole="button"
             >
-              <Ionicons name="chevron-back" size={28} color="#1F1F1F" />
+              <ThemedIcon name="chevron-back" size={28} color="#1F1F1F" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Boletim Anual</Text>
             <View style={{ width: 28 }} />
@@ -184,10 +196,12 @@ export function BoletimAnualScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Evita a tela apagar durante a leitura. */}
+      <KeepAwake />
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={28} color="#1F1F1F" />
+            <ThemedIcon name="chevron-back" size={28} color="#1F1F1F" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Boletim Anual</Text>
           <View style={{ width: 28 }} />
@@ -218,7 +232,7 @@ export function BoletimAnualScreen() {
           <ErrorState message={error} onRetry={refetch} />
         ) : !annualReport ? (
           <View style={styles.center}>
-            <Ionicons name="document-text-outline" size={56} color="#D0D0D0" />
+            <ThemedIcon name="document-text-outline" size={56} color="#D0D0D0" />
             <Text style={styles.emptyTitle}>Nenhum dado disponível</Text>
             <Text style={styles.emptySubtitle}>
               Não foi possível carregar o boletim anual.
@@ -263,7 +277,7 @@ export function BoletimAnualScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",
@@ -384,6 +398,17 @@ const styles = StyleSheet.create({
   },
   situacaoBadgeText: {
     color: "white",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  situacaoBadgeNaoLiberada: {
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: "#E5E5EA",
+  },
+  situacaoBadgeNaoLiberadaText: {
+    color: "#7A7A7A",
     fontSize: 13,
     fontWeight: "700",
   },

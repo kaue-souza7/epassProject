@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "../../api/errors";
 import { useState, useCallback } from "react";
 import {
   View,
@@ -9,7 +10,6 @@ import {
   SafeAreaView,
   RefreshControl,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -17,10 +17,15 @@ import { useAuth } from "../../contexts/AuthContext";
 import { getProfessorTurmas, type ProfessorTurma } from "../../api/teacher.service";
 import { ErrorState } from "../../components/ErrorState";
 import type { ProfessorStackParamList } from "../../types/navigation";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type NavProp = NativeStackNavigationProp<ProfessorStackParamList>;
 
 export function ProfessorResumoScreen() {
+  useThemeVersion();
+
   const navigation = useNavigation<NavProp>();
   const { user } = useAuth();
   const [turmas, setTurmas] = useState<ProfessorTurma[]>([]);
@@ -36,7 +41,7 @@ export function ProfessorResumoScreen() {
       const data = await getProfessorTurmas();
       setTurmas(data);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao carregar dados";
+      const msg = getApiErrorMessage(err, "Erro ao carregar dados");
       setError(msg);
     } finally {
       setLoading(false);
@@ -102,12 +107,12 @@ export function ProfessorResumoScreen() {
 
           <View style={styles.statsRow}>
             <View style={[styles.statCard, { backgroundColor: "#FFF0F3" }]}>
-              <Ionicons name="school" size={22} color="#FF5B8F" />
+              <ThemedIcon name="school" size={22} color="#FF5B8F" />
               <Text style={styles.statValue}>{turmas.length}</Text>
               <Text style={styles.statLabel}>Turmas</Text>
             </View>
             <View style={[styles.statCard, { backgroundColor: "#E8F5E9" }]}>
-              <Ionicons name="people" size={22} color="#4CAF50" />
+              <ThemedIcon name="people" size={22} color="#4CAF50" />
               <Text style={styles.statValue}>{totalAlunos}</Text>
               <Text style={styles.statLabel}>Alunos</Text>
             </View>
@@ -148,14 +153,14 @@ export function ProfessorResumoScreen() {
           {turmas.length > 5 && (
             <TouchableOpacity
               style={styles.verMaisButton}
-              onPress={() => navigation.navigate("ProfessorTabs", { screen: "Modulos" })}
+              onPress={() => navigation.navigate("ClassesList")}
               accessibilityLabel="Ver todas as turmas"
               accessibilityRole="button"
             >
               <Text style={styles.verMaisText}>
                 Ver todas as {turmas.length} turmas
               </Text>
-              <Ionicons name="arrow-forward" size={16} color="#FF5B8F" />
+              <ThemedIcon name="arrow-forward" size={16} color="#FF5B8F" />
             </TouchableOpacity>
           )}
 
@@ -166,7 +171,7 @@ export function ProfessorResumoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",

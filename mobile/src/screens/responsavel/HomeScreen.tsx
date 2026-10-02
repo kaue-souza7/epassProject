@@ -5,15 +5,16 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   ScrollView,
   SafeAreaView,
   RefreshControl,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import { useSelectedStudent } from "../../hooks/useSelectedStudent";
 import { useEvents } from "../../hooks/useAgenda";
 import { useWallet } from "../../hooks/useWallet";
@@ -21,6 +22,9 @@ import { useAttendance } from "../../hooks/useAttendance";
 import { useDashboard } from "../../hooks/useDashboard";
 import { ErrorState } from "../../components/ErrorState";
 import type { ResponsavelStackParamList } from "../../types/navigation";
+import { createThemedStyles } from "../../theme/useThemedStyles";
+import { useThemeVersion } from "../../theme/useThemeVersion";
+import { ThemedIcon } from "../../theme/ThemedIcon";
 
 type NavProp = NativeStackNavigationProp<ResponsavelStackParamList, "HomeTabs">;
 
@@ -32,6 +36,8 @@ function daysUntil(dateStr: string): number {
 }
 
 export function HomeScreen() {
+  useThemeVersion();
+
   const navigation = useNavigation<NavProp>();
   const { selectedChild, selectChild } = useSelectedStudent();
   const { events, loading: loadingEvents, refetch: refetchEvents } = useEvents({ size: 5 });
@@ -160,24 +166,62 @@ export function HomeScreen() {
             end={{ x: 1, y: 0.5 }}
             style={styles.heroCard}
           >
-            <View style={styles.heroContent}>
-              <View style={styles.heroAvatar}>
-                <Text style={styles.heroAvatarText}>
-                  {selectedChild.aluno_nome.charAt(0).toUpperCase()}
+            <View style={styles.decorGlow1} />
+            <View style={styles.decorGlow2} />
+            <View style={styles.decorGlow3} />
+            <View style={styles.decorDot1} />
+            <View style={styles.decorDot2} />
+            <View style={styles.decorDot3} />
+
+            <LinearGradient
+              colors={["rgba(255,255,255,0.22)", "rgba(255,255,255,0.06)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.atenaGlass}
+            >
+              <Image
+                source={require("../../../assets/images/atena/atena-logo.png")}
+                style={styles.atenaImage}
+              />
+              <View style={styles.atenaTextGroup}>
+                <Text style={styles.atenaGreeting}>
+                  Olá, {selectedChild.aluno_nome.split(" ")[0]}! ✨
+                </Text>
+                <Text style={styles.atenaSubtitle}>
+                  Pergunte o que quiser para a{" "}
+                  <Text style={styles.atenaHighlight}>Atena</Text>
                 </Text>
               </View>
-              <View style={styles.heroTextGroup}>
-                <Text style={styles.heroHeadline}>Hoje tem aula!</Text>
-                <TouchableOpacity
-                  style={styles.heroButton}
-                  onPress={() => navigation.navigate("Boletim")}
-                  accessibilityLabel="Ver boletim do aluno"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.heroButtonText}>Ver boletim</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            </LinearGradient>
+
+            <TouchableOpacity
+              style={styles.atenaButton}
+              onPress={() => navigation.navigate("AtenaChat")}
+              accessibilityLabel="Falar com Atena"
+              accessibilityRole="button"
+            >
+              <Text style={styles.atenaButtonText}>Falar com Atena</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.liberarButton}
+              onPress={() => navigation.navigate("LiberarAluno")}
+              accessibilityLabel="Liberar aluno"
+              accessibilityRole="button"
+            >
+              <ThemedIcon name="walk-outline" size={18} color="rgba(255,255,255,0.85)" />
+              <Text style={styles.liberarButtonText}>Liberar Aluno</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.carteirinhaLink}
+              onPress={() => navigation.navigate("CarteirinhaDigital")}
+              accessibilityLabel="Carteirinha Digital"
+              accessibilityRole="button"
+            >
+              <ThemedIcon name="wallet-outline" size={15} color="rgba(255,255,255,0.5)" />
+              <Text style={styles.carteirinhaLinkText}>Carteirinha Digital</Text>
+            </TouchableOpacity>
           </LinearGradient>
 
           {mediaGeral != null && (
@@ -210,7 +254,7 @@ export function HomeScreen() {
             <View style={styles.freqDetailCard}>
               {hojeLabel && (
                 <View style={styles.hojeRow}>
-                  <Ionicons
+                  <ThemedIcon
                     name={
                       situacaoHoje === "presente"
                         ? "checkmark-circle"
@@ -295,7 +339,7 @@ export function HomeScreen() {
           ) : displayEvents.length === 0 ? (
             <View style={styles.card}>
               <View style={styles.emptyEvents}>
-                <Ionicons name="calendar-outline" size={40} color="#C7C7C7" />
+                <ThemedIcon name="calendar-outline" size={40} color="#C7C7C7" />
                 <Text style={styles.emptyEventsText}>Nenhum evento nos próximos dias</Text>
               </View>
               <View style={styles.cardDivider} />
@@ -306,7 +350,7 @@ export function HomeScreen() {
                 accessibilityRole="button"
               >
                 <Text style={styles.footerLinkText}>Verificar agenda completa</Text>
-                <Ionicons name="arrow-forward" size={16} color="#FF5B8F" />
+                <ThemedIcon name="arrow-forward" size={16} color="#FF5B8F" />
               </TouchableOpacity>
             </View>
           ) : (
@@ -339,7 +383,7 @@ export function HomeScreen() {
                 accessibilityRole="button"
               >
                 <Text style={styles.footerLinkText}>Verificar agenda completa</Text>
-                <Ionicons name="arrow-forward" size={16} color="#FF5B8F" />
+                <ThemedIcon name="arrow-forward" size={16} color="#FF5B8F" />
               </TouchableOpacity>
             </View>
           )}
@@ -349,23 +393,24 @@ export function HomeScreen() {
             style={styles.card}
             onPress={() => navigation.navigate("Wallet")}
             activeOpacity={0.7}
-            accessibilityLabel="Ver carteira"
+            accessibilityLabel="Acessar carteira"
             accessibilityRole="button"
           >
-            <View style={styles.walletMainRow}>
-              <Text style={styles.walletLabel}>Saldo disponível</Text>
-              {loadingWallet ? (
-                <ActivityIndicator size="small" color="#FF5B8F" />
-              ) : (
-                <Text style={styles.walletAmount}>
-                  R$ {(saldo ?? 0).toFixed(2)}
-                </Text>
-              )}
-            </View>
-            <View style={styles.cardDivider} />
-            <View style={styles.footerLink}>
-              <Text style={styles.footerLinkText}>Ver carteira</Text>
-              <Ionicons name="arrow-forward" size={16} color="#FF5B8F" />
+            <View style={styles.walletPreviewRow}>
+              <View style={styles.walletIconContainer}>
+                <ThemedIcon name="wallet-outline" size={24} color="#FF5B8F" />
+              </View>
+              <View style={styles.walletPreviewInfo}>
+                <Text style={styles.walletLabel}>Saldo disponível</Text>
+                {loadingWallet ? (
+                  <ActivityIndicator size="small" color="#FF5B8F" />
+                ) : (
+                  <Text style={styles.walletAmount}>
+                    R$ {(saldo ?? 0).toFixed(2)}
+                  </Text>
+                )}
+              </View>
+              <ThemedIcon name="chevron-forward" size={20} color="#C7C7C7" />
             </View>
           </TouchableOpacity>
         </ScrollView>
@@ -374,7 +419,7 @@ export function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyles({
   container: {
     flex: 1,
     backgroundColor: "#F5F5F7",
@@ -447,51 +492,179 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     borderRadius: 40,
-    minHeight: 180,
-    padding: 24,
+    padding: 18,
+    paddingBottom: 16,
     marginBottom: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#FF5B8F",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.4,
+        shadowRadius: 32,
+      },
+      android: {
+        elevation: 16,
+      },
+    }),
   },
-  heroContent: {
-    flex: 1,
+  decorGlow1: {
+    position: "absolute",
+    top: -40,
+    right: -30,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  decorGlow2: {
+    position: "absolute",
+    bottom: -30,
+    left: -30,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  decorGlow3: {
+    position: "absolute",
+    top: 30,
+    left: "50%",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  decorDot1: {
+    position: "absolute",
+    top: 20,
+    right: 30,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.3)",
+  },
+  decorDot2: {
+    position: "absolute",
+    bottom: 50,
+    right: 50,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  decorDot3: {
+    position: "absolute",
+    top: 10,
+    left: 60,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  atenaGlass: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 20,
+    borderRadius: 24,
+    padding: 6,
+    marginBottom: 4,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
   },
-  heroAvatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "rgba(255,255,255,0.25)",
-    justifyContent: "center",
-    alignItems: "center",
+  atenaImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#FF5B8F",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.5,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
-  heroAvatarText: {
+  atenaTextGroup: {
+    flex: 1,
+    gap: 2,
+  },
+  atenaGreeting: {
+    fontSize: 16,
+    fontWeight: "700",
     color: "white",
-    fontSize: 30,
+  },
+  atenaSubtitle: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "500",
+  },
+  atenaHighlight: {
+    fontWeight: "800",
+    color: "white",
+  },
+  atenaButton: {
+    alignItems: "center",
+    backgroundColor: "white",
+    borderRadius: 999,
+    height: 46,
+    justifyContent: "center",
+    marginBottom: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: "white",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  atenaButtonText: {
+    color: "#FF5B8F",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  liberarButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 999,
+    height: 40,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  liberarButtonText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 14,
     fontWeight: "700",
   },
-  heroTextGroup: {
-    flex: 1,
-    gap: 16,
+  carteirinhaLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingTop: 10,
+    paddingBottom: 2,
+  },
+  carteirinhaLinkText: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 13,
+    fontWeight: "600",
   },
   heroHeadline: {
     fontSize: 22,
     fontWeight: "500",
     color: "white",
-  },
-  heroButton: {
-    backgroundColor: "white",
-    borderRadius: 999,
-    height: 44,
-    paddingHorizontal: 24,
-    alignSelf: "flex-start",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  heroButtonText: {
-    color: "#FF5B8F",
-    fontSize: 15,
-    fontWeight: "700",
   },
   sectionTitle: {
     fontSize: 20,
@@ -556,8 +729,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  walletMainRow: {
-    paddingVertical: 8,
+  walletPreviewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  walletIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#FFF0F3",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  walletPreviewInfo: {
+    flex: 1,
   },
   walletLabel: {
     fontSize: 14,
