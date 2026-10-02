@@ -1,0 +1,25 @@
+# Dependências nunca entram na imagem: o Dockerfile roda `npm ci` dentro do
+# Linux. Sem isto, o `COPY . .` traz o node_modules do host (binários nativos
+# de macOS) e o container passa a depender da máquina de quem constuiu.
+node_modules
+
+# Build local
+dist
+dist-ssr
+.vite
+
+# Versionamento
+.git
+.gitignore
+
+# Ambiente
+.env
+.env.local
+.env.*.local
+
+# Ruído do editor/sistema
+.DS_Store
+*.log
+npm-debug.log*
+.vscode
+.idea

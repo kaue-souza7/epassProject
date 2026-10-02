@@ -15,7 +15,13 @@ export interface User {
   id: string;
   nome: string;
   email: string;
-  perfil: "admin" | "secretaria" | "professor" | "responsavel";
+  perfil:
+    | "admin"
+    | "secretaria"
+    | "coordenador"
+    | "professor"
+    | "responsavel"
+    | "cantineiro";
   ativo: boolean;
 }
 

@@ -10,10 +10,11 @@ export default defineConfig({
     },
   },
   server: {
+    host: true,
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: process.env.VITE_PROXY_TARGET || "http://localhost:8000",
         changeOrigin: true,
       },
     },
@@ -21,5 +22,16 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          motion: ["framer-motion"],
+          query: ["@tanstack/react-query"],
+          charts: ["recharts"],
+          forms: ["react-hook-form", "@hookform/resolvers", "zod"],
+        },
+      },
+    },
   },
 });

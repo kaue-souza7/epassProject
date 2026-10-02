@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 const STORAGE_KEY_ACCESS = "epass_access_token";
 const STORAGE_KEY_REFRESH = "epass_refresh_token";
 
