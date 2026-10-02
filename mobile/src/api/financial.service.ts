@@ -35,15 +35,24 @@ interface RawMovimentacaoItem {
 export interface ExtratoResponse {
   aluno_id: string;
   movimentacoes: MovimentacaoItem[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
 }
 
 interface RawExtratoResponse {
   aluno_id: string;
   movimentacoes: RawMovimentacaoItem[];
+  total?: number;
+  page?: number;
+  size?: number;
+  pages?: number;
 }
 
 export interface RecargaRequest {
   valor: number;
+  idempotency_key?: string;
 }
 
 export interface RecargaResponse {
@@ -80,23 +89,32 @@ export async function getStatement(
     params: { page: params?.page ?? 1, size: params?.size ?? 20, aluno_id: params?.aluno_id },
     signal,
   });
+  const movimentacoes = data.movimentacoes.map((m) => ({
+    ...m,
+    valor: toNum(m.valor),
+    saldo_anterior: toNum(m.saldo_anterior),
+    saldo_posterior: toNum(m.saldo_posterior),
+  }));
+  const total = data.total ?? movimentacoes.length;
+  const size = data.size ?? params?.size ?? 20;
   return {
     aluno_id: data.aluno_id,
-    movimentacoes: data.movimentacoes.map((m) => ({
-      ...m,
-      valor: toNum(m.valor),
-      saldo_anterior: toNum(m.saldo_anterior),
-      saldo_posterior: toNum(m.saldo_posterior),
-    })),
+    movimentacoes,
+    total,
+    page: data.page ?? params?.page ?? 1,
+    size,
+    pages: data.pages ?? (total > 0 ? Math.ceil(total / size) : 0),
   };
 }
 
 export async function recharge(
-  body: RecargaRequest
+  body: RecargaRequest,
+  alunoId?: string
 ): Promise<RecargaResponse> {
   const { data } = await api.post<RawRecargaResponse>(
     "/financial/me/recharge",
-    body
+    body,
+    { params: alunoId ? { aluno_id: alunoId } : undefined }
   );
   return {
     movimentacao_id: data.movimentacao_id,

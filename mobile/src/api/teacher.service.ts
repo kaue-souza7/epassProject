@@ -122,3 +122,56 @@ export async function saveNotas(
   );
   return response;
 }
+
+// Boletim Liberação
+export interface DisciplinaLiberacaoStatus {
+  disciplina_id: string;
+  disciplina_nome: string;
+  liberada: boolean;
+  liberado_em: string | null;
+}
+
+export interface LiberacaoStatusResponse {
+  turma_id: string;
+  turma_codigo: string;
+  bimestre: number;
+  ano_letivo_id: string;
+  total_disciplinas_professor: number;
+  disciplinas_liberadas: DisciplinaLiberacaoStatus[];
+  todas_liberadas: boolean;
+}
+
+export interface LiberacaoBoletimResponse {
+  id: string;
+  professor_id: string;
+  turma_id: string;
+  disciplina_id: string;
+  disciplina_nome: string;
+  alocacao_id: string;
+  ano_letivo_id: string;
+  bimestre: number;
+  liberado_em: string;
+  ativo: boolean;
+}
+
+export async function liberarBoletim(
+  turmaId: string,
+  bimestre: number
+): Promise<LiberacaoBoletimResponse[]> {
+  const { data } = await api.post<LiberacaoBoletimResponse[]>(
+    "/boletim-liberacao",
+    { turma_id: turmaId, bimestre }
+  );
+  return data;
+}
+
+export async function getLiberacaoStatus(
+  turmaId: string,
+  bimestre: number
+): Promise<LiberacaoStatusResponse> {
+  const { data } = await api.get<LiberacaoStatusResponse>(
+    "/boletim-liberacao/status",
+    { params: { turma_id: turmaId, bimestre } }
+  );
+  return data;
+}
