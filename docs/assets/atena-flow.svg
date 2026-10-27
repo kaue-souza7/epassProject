@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="600" viewBox="0 0 1600 600" role="img" aria-labelledby="title desc">
+  <title id="title">Fluxo de resposta da Atena</title>
+  <desc id="desc">Pipeline determinístico em oito etapas: JWT, perfil, allowlist, escopo, contexto autorizado, LLM local, guardrails numéricos e resposta. O modelo só redige a partir de fatos autorizados.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0B12"/>
+      <stop offset="0.6" stop-color="#100D18"/>
+      <stop offset="1" stop-color="#160F20"/>
+    </linearGradient>
+    <radialGradient id="glowPink" cx="0.06" cy="0.15" r="0.5">
+      <stop offset="0" stop-color="#FF5B8F" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#FF5B8F" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowPurple" cx="0.7" cy="0.4" r="0.5">
+      <stop offset="0" stop-color="#6C63FF" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#6C63FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FF5B8F" stop-opacity="0.1"/>
+      <stop offset="0.5" stop-color="#FF5B8F" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#3DD68C" stop-opacity="0.25"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="purpleGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="18" flood-color="#6C63FF" flood-opacity="0.65"/>
+    </filter>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M 44 0 L 0 0 0 44" fill="none" stroke="#FFFFFF" stroke-opacity="0.03" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="600" fill="url(#bg)"/>
+  <rect width="1600" height="600" fill="url(#glowPink)"/>
+  <rect width="1600" height="600" fill="url(#glowPurple)"/>
+  <rect width="1600" height="600" fill="url(#grid)"/>
+
+  <g font-family="Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif">
+    <text x="60" y="58" fill="#C4B5FD" font-size="11" font-weight="800" letter-spacing="3">ATENA · PIPELINE DE CONFIANÇA</text>
+    <text x="60" y="94" fill="#FFFFFF" font-size="27" font-weight="750" letter-spacing="-0.7">O modelo só redige. O escopo é decidido em código.</text>
+    <text x="60" y="122" fill="#FFFFFF" fill-opacity="0.48" font-size="12.5">Nenhuma tabela, coluna, filtro, aluno ou turma é escolhido pelo LLM. Os passos 1 a 5 e o 7 são determinísticos.</text>
+
+    <!-- cards -->
+    <g filter="url(#shadow)">
+      <!-- 01 -->
+      <g>
+        <rect x="56" y="188" width="170" height="196" rx="15" fill="#14141D" stroke="#FFFFFF" stroke-opacity="0.1"/>
+        <rect x="56" y="188" width="170" height="3" rx="1.5" fill="#FF5B8F"/>
+        <text x="78" y="220" fill="#FF8EAC" font-size="10" font-weight="800" letter-spacing="1.6">01 · IDENTIDADE</text>
+        <text x="78" y="252" fill="#FFFFFF" font-size="20" font-weight="750">JWT</text>
+        <text x="78" y="278" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">token de acesso</text>
+        <text x="78" y="296" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">15 min · refresh 7 dias</text>
+        <path d="M78 322 h124" stroke="#FFFFFF" stroke-opacity="0.08"/>
+        <text x="78" y="346" fill="#FFFFFF" fill-opacity="0.33" font-size="10.5">quem está falando?</text>
+      </g>
+      <!-- 02 -->
+      <g>
+        <rect x="246" y="188" width="170" height="196" rx="15" fill="#14141D" stroke="#FFFFFF" stroke-opacity="0.1"/>
+        <rect x="246" y="188" width="170" height="3" rx="1.5" fill="#FF6794"/>
+        <text x="268" y="220" fill="#FF8EAC" font-size="10" font-weight="800" letter-spacing="1.6">02 · PAPEL</text>
+        <text x="268" y="252" fill="#FFFFFF" font-size="20" font-weight="750">Perfil</text>
+        <text x="268" y="278" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">RBAC consistente</text>
+        <text x="268" y="296" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">6 perfis de acesso</text>
+        <path d="M268 322 h124" stroke="#FFFFFF" stroke-opacity="0.08"/>
+        <text x="268" y="346" fill="#FFFFFF" fill-opacity="0.33" font-size="10.5">o que pode perguntar?</text>
+      </g>
+      <!-- 03 -->
+      <g>
+        <rect x="436" y="188" width="170" height="196" rx="15" fill="#14141D" stroke="#FFFFFF" stroke-opacity="0.1"/>
+        <rect x="436" y="188" width="170" height="3" rx="1.5" fill="#FF8DAE"/>
+        <text x="458" y="220" fill="#FF8EAC" font-size="10" font-weight="800" letter-spacing="1.6">03 · CATÁLOGO</text>
+        <text x="458" y="252" fill="#FFFFFF" font-size="20" font-weight="750">Allowlist</text>
+        <text x="458" y="278" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">46 intenções</text>
+        <text x="458" y="296" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">revisadas em testes</text>
+        <path d="M458 322 h124" stroke="#FFFFFF" stroke-opacity="0.08"/>
+        <text x="458" y="346" fill="#FFFFFF" fill-opacity="0.33" font-size="10.5">sem pergunta livre ao SQL</text>
+      </g>
+      <!-- 04 -->
+      <g>
+        <rect x="626" y="188" width="170" height="196" rx="15" fill="#14141D" stroke="#FFFFFF" stroke-opacity="0.1"/>
+        <rect x="626" y="188" width="170" height="3" rx="1.5" fill="#FFB3C8"/>
+        <text x="648" y="220" fill="#FF8EAC" font-size="10" font-weight="800" letter-spacing="1.6">04 · RECORTE</text>
+        <text x="648" y="252" fill="#FFFFFF" font-size="20" font-weight="750">Escopo</text>
+        <text x="648" y="278" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">aluno · turma · vínculo</text>
+        <text x="648" y="296" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">resolvido antes da query</text>
+        <path d="M648 322 h124" stroke="#FFFFFF" stroke-opacity="0.08"/>
+        <text x="648" y="346" fill="#FFFFFF" fill-opacity="0.33" font-size="10.5">quem pode ver o quê?</text>
+      </g>
+      <!-- 05 -->
+      <g>
+        <rect x="816" y="188" width="170" height="196" rx="15" fill="#14141D" stroke="#FFFFFF" stroke-opacity="0.1"/>
+        <rect x="816" y="188" width="170" height="3" rx="1.5" fill="#FEE971"/>
+        <text x="838" y="220" fill="#FFE889" font-size="10" font-weight="800" letter-spacing="1.6">05 · FATOS</text>
+        <text x="838" y="252" fill="#FFFFFF" font-size="20" font-weight="750">Contexto</text>
+        <text x="838" y="278" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">dados autorizados</text>
+        <text x="838" y="296" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">formatados e truncados</text>
+        <path d="M838 322 h124" stroke="#FFFFFF" stroke-opacity="0.08"/>
+        <text x="838" y="346" fill="#FFFFFF" fill-opacity="0.33" font-size="10.5">o modelo não busca nada</text>
+      </g>
+      <!-- 06 llm -->
+      <g filter="url(#purpleGlow)">
+        <rect x="1006" y="188" width="170" height="196" rx="15" fill="#191528" stroke="#A78BFA" stroke-opacity="0.85" stroke-width="1.2"/>
+        <rect x="1006" y="188" width="170" height="3" rx="1.5" fill="#A78BFA"/>
+        <text x="1028" y="220" fill="#C4B5FD" font-size="10" font-weight="800" letter-spacing="1.6">06 · LLM</text>
+        <text x="1028" y="252" fill="#FFFFFF" font-size="20" font-weight="750">Atena local</text>
+        <text x="1028" y="278" fill="#FFFFFF" fill-opacity="0.55" font-size="11.5">qwen3:4b via Ollama</text>
+        <text x="1028" y="296" fill="#FFFFFF" fill-opacity="0.55" font-size="11.5">só redige · sem tools</text>
+        <path d="M1028 322 h124" stroke="#FFFFFF" stroke-opacity="0.1"/>
+        <text x="1028" y="346" fill="#C4B5FD" font-size="10.5" font-weight="700">sem banco · sem tools</text>
+      </g>
+      <!-- 07 -->
+      <g>
+        <rect x="1196" y="188" width="170" height="196" rx="15" fill="#14141D" stroke="#3DD68C" stroke-opacity="0.35"/>
+        <rect x="1196" y="188" width="170" height="3" rx="1.5" fill="#3DD68C"/>
+        <text x="1218" y="220" fill="#8CF0BE" font-size="10" font-weight="800" letter-spacing="1.6">07 · VALIDAÇÃO</text>
+        <text x="1218" y="252" fill="#FFFFFF" font-size="20" font-weight="750">Guardrails</text>
+        <text x="1218" y="278" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">todo número confere</text>
+        <text x="1218" y="296" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">8,5 = 8.50 = 8.5</text>
+        <path d="M1218 322 h124" stroke="#FFFFFF" stroke-opacity="0.08"/>
+        <text x="1218" y="346" fill="#FFFFFF" fill-opacity="0.33" font-size="10.5">anti-alucinação numérica</text>
+      </g>
+      <!-- 08 -->
+      <g>
+        <rect x="1386" y="188" width="158" height="196" rx="15" fill="#14141D" stroke="#FFFFFF" stroke-opacity="0.1"/>
+        <rect x="1386" y="188" width="158" height="3" rx="1.5" fill="#3DD68C"/>
+        <text x="1408" y="220" fill="#8CF0BE" font-size="10" font-weight="800" letter-spacing="1.6">08 · ENTREGA</text>
+        <text x="1408" y="252" fill="#FFFFFF" font-size="20" font-weight="750">Resposta</text>
+        <text x="1408" y="278" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">texto curto em pt-BR</text>
+        <text x="1408" y="296" fill="#FFFFFF" fill-opacity="0.47" font-size="11.5">ou recusa segura</text>
+        <path d="M1408 322 h112" stroke="#FFFFFF" stroke-opacity="0.08"/>
+        <text x="1408" y="346" fill="#FFFFFF" fill-opacity="0.33" font-size="10.5">nunca inferência</text>
+      </g>
+    </g>
+
+    <!-- arrows between cards -->
+    <g stroke="#FF8EAC" stroke-opacity="0.5" stroke-width="1.4" fill="none" stroke-linecap="round">
+      <path d="M226 286 H244"/><path d="M416 286 H434"/><path d="M606 286 H624"/>
+      <path d="M796 286 H814"/><path d="M986 286 H1004"/><path d="M1176 286 H1194"/>
+      <path d="M1366 286 H1384"/>
+    </g>
+
+    <!-- pipeline footnote band -->
+    <g>
+      <rect x="56" y="430" width="1488" height="76" rx="14" fill="#14141D" fill-opacity="0.88" stroke="#FFFFFF" stroke-opacity="0.08"/>
+      <rect x="56" y="430" width="4" height="76" rx="2" fill="#A78BFA"/>
+      <text x="82" y="458" fill="#C4B5FD" font-size="10" font-weight="800" letter-spacing="1.8">DETERMINÍSTICO POR FORA, GENERATIVO SÓ NO MEIO</text>
+      <text x="82" y="483" fill="#FFFFFF" fill-opacity="0.5" font-size="12">Se o escopo, o vínculo ou o guardrail falhar, a resposta é uma recusa — nunca uma inferência. O Ollama fica em rede interna e não recebe credenciais do PostgreSQL.</text>
+      <g font-size="10.5" font-weight="700">
+        <rect x="1200" y="447" width="154" height="28" rx="14" fill="#3DD68C" fill-opacity="0.08" stroke="#3DD68C" stroke-opacity="0.2"/>
+        <text x="1277" y="465" fill="#8CF0BE" text-anchor="middle">IA OPCIONAL</text>
+        <rect x="1362" y="447" width="154" height="28" rx="14" fill="#6C63FF" fill-opacity="0.1" stroke="#A78BFA" stroke-opacity="0.25"/>
+        <text x="1439" y="465" fill="#C4B5FD" text-anchor="middle">DADOS SOB CONTROLE</text>
+      </g>
+    </g>
+
+    <text x="56" y="548" fill="#FFFFFF" fill-opacity="0.32" font-size="11">Testes travam a matriz de permissões, o escopo de cada builder, a cobertura catálogo↔builder e o guardrail que aceita todo número vindo do contexto.</text>
+    <text x="56" y="570" fill="#FFFFFF" fill-opacity="0.2" font-size="10.5">A IA nunca derruba o SGE: /api/v1/health continua 200 e apenas /ai/* responde degradado.</text>
+  </g>
+</svg>
